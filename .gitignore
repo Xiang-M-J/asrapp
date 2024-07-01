@@ -1,0 +1,17 @@
+FunASR/.idea
+FunASR/docs
+FunASR/runtime
+FunASR/tests
+FunASR/web-pages
+FunASR/*/__pycache__
+FunASR/*/*/__pycache__
+FunASR/examples/*/*/iic
+*.zip
+android/.dart_tool
+android/.idea
+android/build
+
+*.onnx
+onnx
+onnxruntime_flutter-main
+*.ort
