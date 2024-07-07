@@ -157,6 +157,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
   Future<IOSink> createFile() async {
     var tempDir = await getTemporaryDirectory();
     _mPath = '${tempDir.path}/flutter_sound_example.pcm';
+    // "/data/user/0/com.example.srexample/cache/flutter_sound_example.pcm"
     var outputFile = File(_mPath!);
     if (outputFile.existsSync()) {
       await outputFile.delete();
