@@ -39,8 +39,6 @@ import 'package:onnxruntime/onnxruntime.dart';
 
 void main() => runApp(const MyApp());
 
-
-
 ///
 const int tSampleRate = 44100;
 typedef _Fn = void Function();
@@ -59,7 +57,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     showPlayer = false;
-    OrtEnv.instance.init();
+    // OrtEnv.instance.init();
     super.initState();
   }
 

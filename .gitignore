@@ -14,4 +14,9 @@ android/build
 *.onnx
 onnx
 onnxruntime_flutter-main
+just_waveform
 *.ort
+mainapp/.dart_tool
+mainapp/.idea
+mainapp/build
+flutter_plugin_record

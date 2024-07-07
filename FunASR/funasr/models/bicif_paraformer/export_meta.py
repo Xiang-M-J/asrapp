@@ -81,7 +81,18 @@ def export_forward(
     # get predicted timestamps
     us_alphas, us_cif_peak = self.predictor.get_upsample_timestmap(enc, mask, pre_token_length)
 
-    return decoder_out, pre_token_length, us_alphas, us_cif_peak
+    results = []
+    b, n, d = decoder_out.size()
+    for i in range(b):
+        am_scores = decoder_out[i]
+        yseq = am_scores.argmax(dim=-1)
+        if yseq.shape[0] == 1:
+            yseq = yseq[0]
+
+        token_int = [s for s in yseq if s not in [0, 1, 2]]
+        results.append(token_int)
+    return decoder_out
+
 
 def export_forward_wav(
         self,

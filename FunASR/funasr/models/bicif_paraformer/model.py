@@ -141,7 +141,7 @@ class BiCifParaformer(Paraformer):
         )
         return ds_alphas, ds_cif_peak, us_alphas, us_peaks
 
-    def forward(
+    def forward_1(
             self,
             waveform,
             **kwargs,
@@ -230,7 +230,7 @@ class BiCifParaformer(Paraformer):
 
         return torch.Tensor(results, device=speech.device)
 
-    def forward_1(self, speech, speech_lengths, maxlenratio=0.0, minlenratio=0.0):
+    def forward(self, speech, speech_lengths, maxlenratio=0.0, minlenratio=0.0):
         if len(speech_lengths.size()) > 1:
             speech_lengths = speech_lengths[:, 0]
 

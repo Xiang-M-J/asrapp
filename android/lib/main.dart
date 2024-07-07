@@ -44,7 +44,6 @@ class _MyAppState extends State<MyApp> {
                     setState(() {
                       audioPath = path;
                       
-
                       showPlayer = true;
                     });
                   },

@@ -7,9 +7,9 @@ import torchaudio
 import tokenizer
 from funasr.frontends.wav_frontend import apply_lfr, load_cmvn, apply_cmvn
 
-onnx_model = onnx.load("BiCifParaformer.onnx")
+onnx_model = onnx.load("BiCifParaformer1.onnx")
 onnx.checker.check_model(onnx_model)
-ort_session = onnxruntime.InferenceSession("BiCifParaformer.onnx")
+ort_session = onnxruntime.InferenceSession("BiCifParaformer1.onnx")
 
 
 def to_numpy(tensor):
@@ -30,7 +30,7 @@ def load_audio(path):
 
 x = load_audio(
     r"D:\work\asrapp\FunASR\examples\industrial_data_pretraining\bicif_paraformer\iic\speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch\example\asr_example.wav")
-l = torch.ones([1]) * x.shape[1]
+l = torch.ones([1], dtype=torch.int64) * x.shape[1]
 
 # compute ONNX Runtime output prediction
 ort_inputs = {"speech": to_numpy(x), "speech_lengths": to_numpy(l)}
@@ -43,7 +43,7 @@ if yseq.shape[0] == 1:
     yseq = yseq[0]
 
 token_int = [s for s in yseq if s not in [0, 1, 2]]
-
+# y_seq = am_scores[0]
 token = tokenizer.Tokenizer(r"D:\work\asrapp\FunASR\examples\industrial_data_pretraining\bicif_paraformer\iic"
                             r"\speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch\tokens.json")
 info = token.id2token(yseq)
