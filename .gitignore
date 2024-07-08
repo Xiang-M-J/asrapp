@@ -11,6 +11,8 @@ android/.dart_tool
 android/.idea
 android/build
 
+*.pyc
+
 *.onnx
 onnx
 onnxruntime_flutter-main
