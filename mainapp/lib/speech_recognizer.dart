@@ -1,6 +1,7 @@
 import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:mainapp/tokenizer.dart';
 import 'package:onnxruntime/onnxruntime.dart';
@@ -104,8 +105,8 @@ class SpeechRecognizer {
     final inputOrt = OrtValueTensor.createTensorWithDataList(
         data_f, [_batch, data.length, data[0].length]);
     
-    double len = data.length.toDouble();
-    final lengthOrt = OrtValueTensor.createTensorWithDataList(Float32List.fromList([len]), [_batch]);
+    int len = data.length;
+    final lengthOrt = OrtValueTensor.createTensorWithDataList(Int64List.fromList([len]), [_batch]);
 
     final runOptions = OrtRunOptions();
     final inputs = {'speech': inputOrt, "speech_lengths":lengthOrt};
@@ -123,8 +124,8 @@ class SpeechRecognizer {
     /// Output probability & update h,c recursively
     final output = (outputs?[0]?.value as List<List<List<double>>>)[0];
 
-    final decoded_result = greedy_decode(output);
-    print(decoded_result);
+    final decodedResult = greedy_decode(output);
+    print(decodedResult);
 
     outputs?.forEach((element) {
       element?.release();
@@ -132,6 +133,6 @@ class SpeechRecognizer {
     
     // final result = greedy_decode(output);
     // print(result);
-    return decoded_result;
+    return decodedResult;
   }
 }

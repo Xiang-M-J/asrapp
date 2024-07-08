@@ -27,7 +27,6 @@ List<List<double>> FloatMat2FloatList(Pointer<Pointer<Float>> m, int axis1, int 
   for (var i = 0; i < axis1; i++) {
     List<double> b = List.empty(growable: true);
     for (var j = 0; j < axis2; j++) {
-      
       b.add(m[i][j]) ;
     }
     a.add(b);

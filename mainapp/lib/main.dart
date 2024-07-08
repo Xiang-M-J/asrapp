@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mainapp/feature.dart';
 import 'package:mainapp/speech_recognizer.dart';
-import 'package:mainapp/tokenizer.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
@@ -65,7 +64,7 @@ class AsrScreenState extends State<AsrScreen> {
   SpeechRecognizer? speechRecognizer;
   static const sampleRate = 16000;
 
-  String? recog_result;
+  String? recognizeResult;
 
   @override
   void initState() {
@@ -154,8 +153,8 @@ class AsrScreenState extends State<AsrScreen> {
       }
     });
     await mRecorder!.startRecorder(
-      // toStream: recordingDataController.sink,
-      codec: Codec.pcm8,
+      toStream: recordingDataController.sink,
+      codec: Codec.pcm16,
       numChannels: 1,
       sampleRate: 16000,
       enableVoiceProcessing: false,
@@ -164,6 +163,17 @@ class AsrScreenState extends State<AsrScreen> {
     setState(() {});
   }
 
+  List<int> toInt16(List<Uint8List> rawData){
+    List<int> intArray = List.empty(growable: true);
+
+    for (var i = 0; i<rawData.length; i++){
+      ByteData byteData = ByteData.sublistView(rawData[i]);
+      for(var i = 0; i < byteData.lengthInBytes; i += 2){
+        intArray.add(byteData.getInt16(i, Endian.little).toInt());
+      }
+    }
+    return intArray;
+  }
   ///停止语音录制的方法
   Future<void> stop() async {
     await mRecorder!.stopRecorder();
@@ -171,22 +181,20 @@ class AsrScreenState extends State<AsrScreen> {
       await recordingDataSubscription!.cancel();
       recordingDataSubscription = null;
     }
-
-    recog_result = await speechRecognizer?.predict(processInput(data), true);
+    final intData = toInt16(data);
+    recognizeResult = await speechRecognizer?.predict(processInput(intData), true);
     // processInput(data);
-    _textController.text = recog_result ?? "未识别到结果";
+    _textController.text = recognizeResult ?? "未识别到结果";
     speechRecognizer?.reset();
     setState(() {
       
     });
   }
 
-  processInput(List<Uint8List> raw){
+  processInput(List<int> raw){
     List<int> waveform = List.empty(growable: true);
     for (var i = 0; i < raw.length; i++) {
-      for (var j = 0; j < raw[i].length; j++) {
-         waveform.add((raw[i][0]));
-      }
+         waveform.add((raw[i]));
     }
     List<List<double>> fbank = extractFbank(waveform);
     return fbank;
@@ -285,30 +293,33 @@ class AsrScreenState extends State<AsrScreen> {
             ),
             ElevatedButton(
                 onPressed: () async {
-                  const XTypeGroup typeGroup = XTypeGroup(
-                    label: 'images',
-                    extensions: <String>['m4a', 'pcm', ".wav"],
-                  );
-                  final XFile? file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
-                  // var binData = await rootBundle.load(file!.path);
-                  if (file == null) {
-                    return;
-                  }
-                  // File audioInFile = File(file.path);
-                  // File waveOutFile = File("${file.path}.wave");
-                  // final progressStream = JustWaveform.extract(
-                  //   audioInFile: audioInFile,
-                  //   waveOutFile: waveOutFile,
+                  // const XTypeGroup typeGroup = XTypeGroup(
+                  //   label: 'images',
+                  //   extensions: <String>['m4a', 'pcm', ".wav"],
                   // );
-                  
-                  // List<double> d = await playerController.extractWaveformData(path: file.path);
-                  // d = d.map((e) => e * (1 << 15)).toList();
-                  // print(d.length);
-                  // progressStream.listen((waveformProgress) {
-                  //   if (waveformProgress.waveform != null) {
-                  //     print(waveformProgress.waveform!.data.length);
-                  //   }
-                  // });
+                  // final XFile? file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+                  // // var binData = await rootBundle.load(file!.path);
+                  // if (file == null) {
+                  //   return;
+                  // }
+                  try{
+                    final rawData = await rootBundle.load("assets/audio/asr_example.wav");
+                    List<int> intData = List.empty(growable: true);
+                    for(var i = 78; i < rawData.lengthInBytes; i+=2){
+                      intData.add(rawData.getInt16(i, Endian.little).toInt());
+                    }
+
+                    recognizeResult = await speechRecognizer?.predict(processInput(intData), true);
+                    // processInput(data);
+                    _textController.text = recognizeResult ?? "未识别到结果";
+                  }
+                  catch(e){
+                    print(e.toString());
+                  }
+
+
+                  speechRecognizer?.reset();
+
                 },
                 child: const Text("打开文件")),
             const SizedBox(

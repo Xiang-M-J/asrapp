@@ -36,7 +36,7 @@ for k, v in kwargs.items():
 
 main_model = main_model.export(**nkwargs)
 inputs = (speech, speech_lengths)
-torch.onnx.export(main_model, inputs, "BiCifParaformer1.onnx", export_params=True,
+torch.onnx.export(main_model, inputs, "BiCifParaformer.onnx", export_params=True,
                   input_names=["speech", "speech_lengths"],
                   output_names=["results"],
                   #   opset_version=15,

@@ -25,7 +25,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:onnxruntime/onnxruntime.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
+
 
 /*
  * This is an example showing how to record to a Dart Stream.
@@ -156,8 +158,9 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
 
   Future<IOSink> createFile() async {
     var tempDir = await getTemporaryDirectory();
-    _mPath = '${tempDir.path}/flutter_sound_example.pcm';
+    _mPath = "${tempDir.path}/flutter_sound_example.pcm";
     // "/data/user/0/com.example.srexample/cache/flutter_sound_example.pcm"
+    // File: '/data/user/0/com.example.srexample/cache/3dfabf41-c9e7-3dc9-8df5-39972832f94d/asr_example.wav'
     var outputFile = File(_mPath!);
     if (outputFile.existsSync()) {
       await outputFile.delete();
@@ -181,6 +184,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
       }
     });
     await _mRecorder!.startRecorder(
+      // toFile: _mPath,
       toStream: recordingDataController.sink,
       codec: Codec.pcm16,
       numChannels: 1,
@@ -241,6 +245,17 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
         : () {
             stopPlayer().then((value) => setState(() {}));
           };
+  }
+
+  List<int> toInt16(Uint8List byteArray){
+    List<int> intArray = List.empty(growable: true);
+    ByteBuffer buffer = byteArray.buffer;
+    ByteData data = ByteData.view(buffer);
+    for(var i = 0; i < byteArray.length; i += 2){
+
+      intArray.add(data.getInt16(i, Endian.little));
+    }
+    return intArray;
   }
 
   // ----------------------------------------------------------------------------------------------------------------------
@@ -323,6 +338,19 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
               Text(_mPlayer!.isPlaying
                   ? 'Playback in progress'
                   : 'Player is stopped'),
+              ElevatedButton(onPressed: () async {
+                // if (_mPath != null){
+                //   final bin_data = await rootBundle.load(_mPath!);
+                //   print(bin_data.lengthInBytes);
+                // }
+                if (_mPath != null){
+                  File file = File(_mPath!);
+                  Uint8List fileBytes = await file.readAsBytes();
+                  final intArray = toInt16(fileBytes);
+                  print(intArray.length);
+                }
+
+              }, child: Text("hello"))
             ])),
       ]);
     }
