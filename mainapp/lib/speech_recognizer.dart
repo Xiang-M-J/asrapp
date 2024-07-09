@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -8,25 +7,22 @@ import 'package:onnxruntime/onnxruntime.dart';
 
 class SpeechRecognizer {
 
-  final int _sampleRate;
   OrtSessionOptions? _sessionOptions;
   OrtSession? _session;
 
-  /// model states
-  var _triggered = false;
 
   static const int _batch = 1;
 
   Tokenizer tokenizer = Tokenizer();
-  SpeechRecognizer(this._sampleRate) {
+  SpeechRecognizer() {
     OrtEnv.instance.init();
     OrtEnv.instance.availableProviders().forEach((element) {
       print('onnx provider=$element');
     });
+
   }
 
   reset() {
-    _triggered = false;
   }
 
   release() {
@@ -49,22 +45,22 @@ class SpeechRecognizer {
     await tokenizer.init();
   }
 
-  String greedy_decode(List<List<double>> logits) {
-    final predicted_ids = logits.map((e) => maxIndex(e)).toList();
+  String greedyDecode(List<List<double>> logits) {
+    final predictedIds = logits.map((e) => maxIndex(e)).toList();
 
-    final decoded_output = tokenizer.id2Token(predicted_ids);
+    final decodedOutput = tokenizer.id2Token(predictedIds);
     
-    // decoded_output = decoded_output  [token for token in decoded_output if token not in ('<s>', '<pad>', '</s>', '<unk>')]
-    return decoded_output.join("|");
+    // decoded_output = [token for token in decoded_output if token not in ('<s>', '<pad>', '</s>', '<unk>')]
+    return decodedOutput.join(" ");
   }
 
   int maxIndex(List<double> values){
     int index = 0;
-    double prev_value = -10000;
+    double preValue = -10000;
     for (var i = 0; i < values.length; i++) {
-      if (values[i] > prev_value) {
+      if (values[i] > preValue) {
         index = i;
-        prev_value = values[i];
+        preValue = values[i];
       }
     }
     return index;
@@ -100,7 +96,7 @@ class SpeechRecognizer {
     return out;
   }
 
-  Future<String> predict(List<List<double>> data, bool concurrent) async {
+  Future<String ?> predict(List<List<double>> data, bool concurrent) async {
     List<Float32List> data_f = doubleList2FloatList(data);
     final inputOrt = OrtValueTensor.createTensorWithDataList(
         data_f, [_batch, data.length, data[0].length]);
@@ -117,6 +113,10 @@ class SpeechRecognizer {
     //   outputs = _session?.run(runOptions, inputs);
     // }
     outputs = _session?.run(runOptions, inputs);
+
+    if(outputs == null){
+      return null;
+    }
     inputOrt.release();
 
     runOptions.release();
@@ -124,7 +124,7 @@ class SpeechRecognizer {
     /// Output probability & update h,c recursively
     final output = (outputs?[0]?.value as List<List<List<double>>>)[0];
 
-    final decodedResult = greedy_decode(output);
+    final decodedResult = greedyDecode(output);
     print(decodedResult);
 
     outputs?.forEach((element) {

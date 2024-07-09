@@ -11,6 +11,7 @@ android/.dart_tool
 android/.idea
 android/build
 
+
 *.pyc
 
 *.onnx

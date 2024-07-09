@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mainapp/feature.dart';
+import 'package:mainapp/pages/loadingScreen.dart';
 import 'package:mainapp/speech_recognizer.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -13,7 +16,25 @@ import 'package:uuid/uuid.dart';
 import 'package:file_selector/file_selector.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
+}
+
+Future<bool> _initialModel(Set input) async {
+  try {
+    // WidgetsFlutterBinding.ensureInitialized();
+    await input.last?.initModel(input.first);
+  } catch (e) {
+    print(e.toString());
+    return false;
+  }
+
+  //   setState(() {
+  //     isSpeechRecognizeModelInitialed = true;
+  //     statusController.text = "语音识别模型已加载";
+  //   });
+  // }
+  return true;
 }
 
 class MyApp extends StatelessWidget {
@@ -40,7 +61,9 @@ class AsrScreen extends StatefulWidget {
 
 class AsrScreenState extends State<AsrScreen> {
   // String _recordFilePath;
-  final TextEditingController _textController = TextEditingController();
+  final TextEditingController resultController = TextEditingController();
+  final TextEditingController statusController = TextEditingController();
+
   // 倒计时总时长
   double starty = 0.0;
   double offset = 0.0;
@@ -57,12 +80,16 @@ class AsrScreenState extends State<AsrScreen> {
   List<Uint8List> data = List<Uint8List>.empty(growable: true);
   String? audioPath;
   StreamSubscription? recordingDataSubscription;
-  bool mRecorderIsInited = false;
+  bool mRecorderIsInitialed = false;
   var uuid = const Uuid();
   List<String> tempNames = List.empty(growable: true);
 
   SpeechRecognizer? speechRecognizer;
   static const sampleRate = 16000;
+
+  bool isSpeechRecognizeModelInitialed = true;
+  bool isRecording = false;
+  bool isRecognizing = false;
 
   String? recognizeResult;
 
@@ -72,8 +99,31 @@ class AsrScreenState extends State<AsrScreen> {
     // _player = FlutterSoundPlayer();
     // _recorder = FlutterSoundRecorder();
     initializeAudio();
-    speechRecognizer = SpeechRecognizer(sampleRate);
+
+    // speechRecognizer = SpeechRecognizer();
+
+    if (!isSpeechRecognizeModelInitialed) {
+      statusController.text = "语音识别模型正在加载";
+    }
+    // compute(initialModel as ComputeCallback);
+    speechRecognizer = SpeechRecognizer();
     speechRecognizer?.initModel();
+    // initialModel();
+  }
+
+  void initialModel() async {
+    if (!isSpeechRecognizeModelInitialed) {
+      statusController.text = "语音识别模型正在加载";
+      const assetFileName = 'assets/models/BiCifParaformer.onnx';
+      final rawAssetFile = await rootBundle.load(assetFileName);
+      final input = {rawAssetFile, speechRecognizer};
+      isSpeechRecognizeModelInitialed = await compute(_initialModel, input);
+      await speechRecognizer?.tokenizer.init();
+      if (isSpeechRecognizeModelInitialed) {
+        statusController.text = "语音识别模型加载完成";
+      }
+      setState(() {});
+    }
   }
 
   Future<void> initializeAudio() async {
@@ -101,7 +151,7 @@ class AsrScreenState extends State<AsrScreen> {
       androidWillPauseWhenDucked: true,
     ));
     setState(() {
-      mRecorderIsInited = true;
+      mRecorderIsInitialed = true;
     });
   }
 
@@ -118,7 +168,8 @@ class AsrScreenState extends State<AsrScreen> {
   void dispose() {
     // _player.closePlayer();
     // _recorder.closeRecorder();
-    _textController.dispose();
+    resultController.dispose();
+    statusController.dispose();
     _timer?.cancel();
     mRecorder!.closeRecorder();
     mRecorder = null;
@@ -141,7 +192,7 @@ class AsrScreenState extends State<AsrScreen> {
 
   ///开始语音录制的方法
   void start() async {
-    assert(mRecorderIsInited);
+    assert(mRecorderIsInitialed);
     var sink = await createFile();
     data.clear();
     var recordingDataController = StreamController<Food>();
@@ -163,17 +214,18 @@ class AsrScreenState extends State<AsrScreen> {
     setState(() {});
   }
 
-  List<int> toInt16(List<Uint8List> rawData){
+  List<int> toInt16(List<Uint8List> rawData) {
     List<int> intArray = List.empty(growable: true);
 
-    for (var i = 0; i<rawData.length; i++){
+    for (var i = 0; i < rawData.length; i++) {
       ByteData byteData = ByteData.sublistView(rawData[i]);
-      for(var i = 0; i < byteData.lengthInBytes; i += 2){
+      for (var i = 0; i < byteData.lengthInBytes; i += 2) {
         intArray.add(byteData.getInt16(i, Endian.little).toInt());
       }
     }
     return intArray;
   }
+
   ///停止语音录制的方法
   Future<void> stop() async {
     await mRecorder!.stopRecorder();
@@ -181,20 +233,26 @@ class AsrScreenState extends State<AsrScreen> {
       await recordingDataSubscription!.cancel();
       recordingDataSubscription = null;
     }
+    setState(() {
+      isRecognizing=true;
+      statusController.text = "正在识别...";
+    });
     final intData = toInt16(data);
-    recognizeResult = await speechRecognizer?.predict(processInput(intData), true);
+    recognizeResult =
+        await speechRecognizer?.predict(processInput(intData), true);
     // processInput(data);
-    _textController.text = recognizeResult ?? "未识别到结果";
+    resultController.text = recognizeResult ?? "未识别到结果";
     speechRecognizer?.reset();
     setState(() {
-      
+      isRecognizing=true;
+      statusController.text = "识别完成";
     });
   }
 
-  processInput(List<int> raw){
+  processInput(List<int> raw) {
     List<int> waveform = List.empty(growable: true);
     for (var i = 0; i < raw.length; i++) {
-         waveform.add((raw[i]));
+      waveform.add((raw[i]));
     }
     List<List<double>> fbank = extractFbank(waveform);
     return fbank;
@@ -209,6 +267,7 @@ class AsrScreenState extends State<AsrScreen> {
   }
 
   hideVoiceView() {
+    if(isRecognizing) return;
     if (_timer!.isActive) {
       if (_count < 1) {
         print("too short");
@@ -219,6 +278,7 @@ class AsrScreenState extends State<AsrScreen> {
     setState(() {
       textShow = "按住说话";
       voiceState = true;
+      isRecording = false;
     });
 
     stop();
@@ -234,6 +294,7 @@ class AsrScreenState extends State<AsrScreen> {
     return time;
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -244,31 +305,66 @@ class AsrScreenState extends State<AsrScreen> {
         child: Column(
           // mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            Padding(
+              padding:
+                  const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
+              child: TextField(
+                controller: statusController,
+                style: const TextStyle(color: Colors.grey),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey, width: 2),
+                  ),
+                ),
+                maxLines: 1,
+                readOnly: true,
+              ),
+            ),
             const SizedBox(
               height: 40,
             ),
-            Text("录音时间：${int2time(_count)}"),
+            Text.rich(
+              TextSpan(
+                children: [
+                  WidgetSpan(
+                      child: Icon(
+                    Icons.mic,
+                    color: isRecording ? Colors.green : Colors.grey,
+                    size: 24,
+                  )),
+                  TextSpan(
+                      text: " 录音时间：${int2time(_count)}",
+                      style: const TextStyle(fontSize: 18)),
+                ],
+              ),
+            ),
             const SizedBox(
-              height: 10,
+              height: 40,
             ),
             GestureDetector(
-              onLongPressStart: (details) {
-                _count = 0;
-                showVoiceView();
-                _timer =
-                    Timer.periodic(const Duration(milliseconds: 1000), (t) {
-                  setState(() {
-                    _count++;
-                  });
-                  if (_count == maxRecordTime) {
-                    print("最多录制300s");
-                    hideVoiceView();
-                  }
-                });
-              },
-              onLongPressEnd: (details) {
-                hideVoiceView();
-              },
+              onLongPressStart: isSpeechRecognizeModelInitialed
+                  ? (details) {
+                if(isRecognizing) return;
+                      _count = 0;
+                      showVoiceView();
+                      _timer = Timer.periodic(
+                          const Duration(milliseconds: 1000), (t) {
+                        setState(() {
+                          _count++;
+                          isRecording = true;
+                        });
+                        if (_count == maxRecordTime) {
+                          print("最多录制300s");
+                          hideVoiceView();
+                        }
+                      });
+                    }
+                  : null,
+              onLongPressEnd: isSpeechRecognizeModelInitialed
+                  ? (details) {
+                      hideVoiceView();
+                    }
+                  : null,
               child: Container(
                 height: 100,
                 width: 100,
@@ -292,47 +388,52 @@ class AsrScreenState extends State<AsrScreen> {
               height: 20,
             ),
             ElevatedButton(
-                onPressed: () async {
-                  // const XTypeGroup typeGroup = XTypeGroup(
-                  //   label: 'images',
-                  //   extensions: <String>['m4a', 'pcm', ".wav"],
-                  // );
-                  // final XFile? file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
-                  // // var binData = await rootBundle.load(file!.path);
-                  // if (file == null) {
-                  //   return;
-                  // }
-                  try{
-                    final rawData = await rootBundle.load("assets/audio/asr_example.wav");
-                    List<int> intData = List.empty(growable: true);
-                    for(var i = 78; i < rawData.lengthInBytes; i+=2){
-                      intData.add(rawData.getInt16(i, Endian.little).toInt());
+                onPressed: isSpeechRecognizeModelInitialed
+                    ? () async {
+                  if(isRecognizing) return;
+                  setState(() {
+                    isRecognizing = true;
+                    statusController.text = "正在识别...";
+                  });
+                  Future.delayed(const Duration(milliseconds: 50), ()async{
+                    try {
+                      final rawData = await rootBundle.load("assets/audio/asr_example.wav");
+                      List<int> intData = List.empty(growable: true);
+                      for (var i = 78; i < rawData.lengthInBytes; i += 2) {
+                        intData.add(rawData.getInt16(i, Endian.little).toInt());
+                      }
+                      recognizeResult =
+                          await speechRecognizer?.predict(processInput(intData), true);
+                      resultController.text = recognizeResult ?? "未识别到结果";
+                    } catch (e) {
+                      print(e.toString());
                     }
-
-                    recognizeResult = await speechRecognizer?.predict(processInput(intData), true);
-                    // processInput(data);
-                    _textController.text = recognizeResult ?? "未识别到结果";
-                  }
-                  catch(e){
-                    print(e.toString());
-                  }
-
+                  });
 
                   speechRecognizer?.reset();
-
-                },
+                  setState(() {
+                    isRecognizing = false;
+                    statusController.text = "识别完成";
+                  });
+                      }
+                    : null,
                 child: const Text("打开文件")),
             const SizedBox(
               height: 20,
             ),
-            TextFormField(
-              controller: _textController,
-              decoration: const InputDecoration(
-                hintText: '识别结果',
-                border: OutlineInputBorder(),
+            Padding(
+              padding:
+                  const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
+              child: TextFormField(
+                controller: resultController,
+                decoration: const InputDecoration(
+                  hintText: '识别结果',
+                  border: OutlineInputBorder(),
+                ),
+                readOnly: true,
+                minLines: 4,
+                maxLines: 10,
               ),
-              readOnly: true,
-              
             ),
           ],
         ),
