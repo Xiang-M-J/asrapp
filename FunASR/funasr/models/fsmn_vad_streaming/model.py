@@ -359,6 +359,22 @@ class FsmnVADStreaming(nn.Module):
         else:
             cache["stats"].scores = torch.cat((cache["stats"].scores, scores), dim=1)
 
+    def ComputeScores_my(self, feats: torch.Tensor, cache: dict = {}) -> None:
+        args = []
+        cache_frames = self.encoder_conf.get("lorder") + self.encoder_conf.get("rorder") - 1
+        for i in range(4):
+            args.append(torch.zeros(1, self.encoder_conf.get('proj_dim'), cache_frames, 1))
+        scores = self.encoder(feats, *args)[0].to("cpu")  # return B * T * D
+        assert (
+                scores.shape[1] == feats.shape[1]
+        ), "The shape between feats and scores does not match"
+        self.vad_opts.nn_eval_block_size = scores.shape[1]
+        cache["stats"].frm_cnt += scores.shape[1]  # count total frames
+        if cache["stats"].scores is None:
+            cache["stats"].scores = scores  # the first calculation
+        else:
+            cache["stats"].scores = torch.cat((cache["stats"].scores, scores), dim=1)
+
     def PopDataBufTillFrame(self, frame_idx: int, cache: dict = {}) -> None:  # need check again
         while cache["stats"].data_buf_start_frame < frame_idx:
             if len(cache["stats"].data_buf) >= int(
@@ -786,7 +802,7 @@ class FsmnVADStreaming(nn.Module):
                 "cache": cache,
                 "is_streaming_input": is_streaming_input,
             }
-            segments_i = self.forward()
+            segments_i = self.forward_o(**batch)
             if len(segments_i) > 0:
                 segments.extend(*segments_i)
 

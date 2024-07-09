@@ -4,6 +4,8 @@
 #  MIT License  (https://opensource.org/licenses/MIT)
 
 import types
+
+import numpy as np
 import torch
 from funasr.register import tables
 
@@ -28,11 +30,11 @@ def export_rebuild_model_my(model, **kwargs):
     encoder_class = tables.encoder_classes.get(kwargs["encoder"] + "Export")
     model.encoder = encoder_class(model.encoder, onnx=is_onnx)
 
-    model.forward = types.MethodType(export_forward, model)
-    model.export_dummy_inputs = types.MethodType(export_dummy_inputs, model)
-    model.export_input_names = types.MethodType(export_input_names, model)
-    model.export_output_names = types.MethodType(export_output_names, model)
-    model.export_dynamic_axes = types.MethodType(export_dynamic_axes, model)
+    model.forward = types.MethodType(export_forward_my, model)
+    model.export_dummy_inputs = types.MethodType(export_dummy_inputs_my, model)
+    model.export_input_names = types.MethodType(export_input_names_my, model)
+    model.export_output_names = types.MethodType(export_output_names_my, model)
+    model.export_dynamic_axes = types.MethodType(export_dynamic_axes_my, model)
     model.export_name = types.MethodType(export_name, model)
 
     return model
@@ -52,7 +54,19 @@ def export_forward_my(self, feats, waveform):
     cache["stats"].waveform = waveform
     is_streaming_input = False
     self.ComputeDecibel(cache=cache)
-    self.ComputeScores(feats, cache=cache)
+
+    args = []
+    cache_frames = self.encoder_conf.get("lorder") + self.encoder_conf.get("rorder") - 1
+    for i in range(4):
+        args.append(torch.zeros(1, self.encoder_conf.get('proj_dim'), cache_frames, 1))
+    scores = self.encoder(feats, *args)[0].to("cpu")  # return B * T * D
+    self.vad_opts.nn_eval_block_size = scores.shape[1]
+    cache["stats"].frm_cnt += scores.shape[1]  # count total frames
+    if cache["stats"].scores is None:
+        cache["stats"].scores = scores  # the first calculation
+    else:
+        cache["stats"].scores = torch.cat((cache["stats"].scores, scores), dim=1)
+
     self.DetectLastFrames(cache=cache)
     segments = []
     for batch_num in range(0, feats.shape[0]):  # only support batch_size = 1 now
@@ -102,7 +116,7 @@ def export_forward_my(self, feats, waveform):
 
         if segment_batch:
             segments.append(segment_batch)
-    return torch.tensor(segments, dtype=torch.int64)
+    return scores, torch.from_numpy(np.array(segments))
 
 
 def export_dummy_inputs(self, data_in=None, frame=30):
@@ -119,19 +133,38 @@ def export_dummy_inputs(self, data_in=None, frame=30):
 
     return (speech, in_cache0, in_cache1, in_cache2, in_cache3)
 
-def export_dummy_inputs
+
+def export_dummy_inputs_my(self, frame=30):
+    speech = torch.randn(1, frame, self.encoder_conf.get("input_dim"))
+    waveform = torch.randn(1, frame * 100)
+    return speech, waveform
+
 
 def export_input_names(self):
     return ["speech", "in_cache0", "in_cache1", "in_cache2", "in_cache3"]
+
+
+def export_input_names_my(self):
+    return ["speech", "waveform"]
 
 
 def export_output_names(self):
     return ["logits", "out_cache0", "out_cache1", "out_cache2", "out_cache3"]
 
 
+def export_output_names_my(self):
+    return ["scores", "segments"]
+
+
 def export_dynamic_axes(self):
     return {
         "speech": {1: "feats_length"},
+    }
+
+def export_dynamic_axes_my(self):
+    return {
+        "speech": {1: "feats_length"},
+        "waveform": {1: "wave_length"}
     }
 
 
