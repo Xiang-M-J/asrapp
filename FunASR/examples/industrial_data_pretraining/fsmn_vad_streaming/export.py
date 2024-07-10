@@ -6,19 +6,19 @@
 
 # method1, inference from model hub
 
-from funasr import AutoModel
-
-model = AutoModel(model="iic/speech_fsmn_vad_zh-cn-16k-common-pytorch")
-
-res = model.export(type="onnx", quantize=False)
-print(res)
+# from funasr import AutoModel
+#
+# model = AutoModel(model="iic/speech_fsmn_vad_zh-cn-16k-common-pytorch")
+#
+# res = model.export(type="onnx", quantize=False)
+# print(res)
 
 # method2, inference from local path
 
 from funasr import AutoModel
 
 model = AutoModel(
-    model="/Users/zhifu/.cache/modelscope/hub/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
+    model=r"D:\work\asrapp\FunASR\examples\industrial_data_pretraining\bicif_paraformer/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
 )
 
 res = model.export(type="onnx", quantize=False)

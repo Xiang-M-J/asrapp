@@ -63,7 +63,7 @@ class VaDetector {
     isInitialed = true;
   }
 
-  Future<bool> predict(Float32List data, bool concurrent) async {
+  Future<bool> predict(Float32List data) async {
     final inputOrt =
     OrtValueTensor.createTensorWithDataList(data, [_batch, _windowSizeSamples]);
     final srOrt = OrtValueTensor.createTensorWithData(_sampleRate);
@@ -72,11 +72,12 @@ class VaDetector {
     final runOptions = OrtRunOptions();
     final inputs = {'input': inputOrt, 'sr': srOrt, 'h': hOrt, 'c': cOrt};
     final List<OrtValue?>? outputs;
-    if (concurrent) {
-      outputs = await _session?.runAsync(runOptions, inputs);
-    } else {
-      outputs = _session?.run(runOptions, inputs);
-    }
+    // if (concurrent) {
+    //   outputs = await _session?.runAsync(runOptions, inputs);
+    // } else {
+    //   outputs = _session?.run(runOptions, inputs);
+    // }
+    outputs = await _session?.runAsync(runOptions, inputs);
     inputOrt.release();
     srOrt.release();
     hOrt.release();

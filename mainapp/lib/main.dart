@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
@@ -208,7 +209,6 @@ class AsrScreenState extends State<AsrScreen> {
     var recordingDataController = StreamController<Food>();
     recordingDataSubscription = recordingDataController.stream.listen((buffer) {
       if (buffer is FoodData) {
-        // print(buffer.data!);
         data.add(buffer.data!);
         sink.add(buffer.data!);
       }
@@ -266,6 +266,12 @@ class AsrScreenState extends State<AsrScreen> {
     }
     List<List<double>> fbank = extractFbank(waveform);
     return fbank;
+  }
+
+  Float32List int2Float(List<int> raw){
+    List<double> raw_d = raw.map((e) => e / 32768).toList();
+    Float32List input = Float32List.fromList(raw_d);
+    return input;
   }
 
   showVoiceView() {
@@ -420,6 +426,14 @@ class AsrScreenState extends State<AsrScreen> {
                             intData.add(
                                 rawData.getInt16(i, Endian.little).toInt());
                           }
+                          if (useVAD && vaDetector!.isInitialed){
+                            setState(() {
+                              statusController.text = "正在获取VAD结果";
+                            });
+                            Float32List input = int2Float(intData);
+                            // TODO 修改
+                            vaDetector?.predict(input);
+                          }
                           recognizeResult = await speechRecognizer
                               ?.predictWrapper(processInput(intData));
 
@@ -472,12 +486,13 @@ class AsrScreenState extends State<AsrScreen> {
                           useVAD = value;
                         });
                         if (!vaDetector!.isInitialed){
+                          setState(() {
+                            statusController.text = "正在加载VAD模型";
+                          });
                           vaDetector?.initModel();
                         }
                       })
                 ),
-
-
               ],
             )
           ],
