@@ -7,9 +7,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:mainapp/feature.dart';
-import 'package:mainapp/pages/loadingScreen.dart';
-import 'package:mainapp/speech_recognizer.dart';
+import 'package:mainapp/pages/show_toasts.dart';
+import 'package:mainapp/utils/feature.dart';
+import 'package:mainapp/utils/ort_env_utils.dart';
+import 'package:mainapp/utils/speech_recognizer.dart';
+import 'package:mainapp/utils/voice_activity_detector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
@@ -85,6 +87,8 @@ class AsrScreenState extends State<AsrScreen> {
   List<String> tempNames = List.empty(growable: true);
 
   SpeechRecognizer? speechRecognizer;
+  VaDetector? vaDetector;
+
   static const sampleRate = 16000;
 
   bool isSpeechRecognizeModelInitialed = true;
@@ -92,6 +96,7 @@ class AsrScreenState extends State<AsrScreen> {
   bool isRecognizing = false;
 
   String? recognizeResult;
+  bool useVAD = false;
 
   @override
   void initState() {
@@ -106,7 +111,9 @@ class AsrScreenState extends State<AsrScreen> {
       statusController.text = "语音识别模型正在加载";
     }
     // compute(initialModel as ComputeCallback);
+    initOrtEnv();
     speechRecognizer = SpeechRecognizer();
+    vaDetector = VaDetector();
     speechRecognizer?.initModel();
     // initialModel();
   }
@@ -174,6 +181,9 @@ class AsrScreenState extends State<AsrScreen> {
     mRecorder!.closeRecorder();
     mRecorder = null;
     deleteFiles();
+    vaDetector?.release();
+    speechRecognizer?.release();
+    releaseOrtEnv();
     super.dispose();
   }
 
@@ -233,18 +243,18 @@ class AsrScreenState extends State<AsrScreen> {
       await recordingDataSubscription!.cancel();
       recordingDataSubscription = null;
     }
+
     setState(() {
-      isRecognizing=true;
+      isRecognizing = true;
       statusController.text = "正在识别...";
     });
     final intData = toInt16(data);
-    recognizeResult =
-        await speechRecognizer?.predict(processInput(intData), true);
-    // processInput(data);
+    recognizeResult = await speechRecognizer
+        ?.predictWrapper(processInput(intData));
     resultController.text = recognizeResult ?? "未识别到结果";
     speechRecognizer?.reset();
     setState(() {
-      isRecognizing=true;
+      isRecognizing = false;
       statusController.text = "识别完成";
     });
   }
@@ -267,7 +277,7 @@ class AsrScreenState extends State<AsrScreen> {
   }
 
   hideVoiceView() {
-    if(isRecognizing) return;
+    if (isRecognizing) return;
     if (_timer!.isActive) {
       if (_count < 1) {
         print("too short");
@@ -294,7 +304,6 @@ class AsrScreenState extends State<AsrScreen> {
     return time;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -309,6 +318,7 @@ class AsrScreenState extends State<AsrScreen> {
               padding:
                   const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
               child: TextField(
+                // key: _formKey,
                 controller: statusController,
                 style: const TextStyle(color: Colors.grey),
                 decoration: const InputDecoration(
@@ -344,14 +354,21 @@ class AsrScreenState extends State<AsrScreen> {
             GestureDetector(
               onLongPressStart: isSpeechRecognizeModelInitialed
                   ? (details) {
-                if(isRecognizing) return;
+                      if (isRecognizing) {
+                        showRecordingToast();
+
+                        return;
+                      }
                       _count = 0;
+                      setState(() {
+                        isRecording = true;
+                        statusController.text = "正在录音...";
+                      });
                       showVoiceView();
                       _timer = Timer.periodic(
                           const Duration(milliseconds: 1000), (t) {
                         setState(() {
                           _count++;
-                          isRecording = true;
                         });
                         if (_count == maxRecordTime) {
                           print("最多录制300s");
@@ -390,31 +407,32 @@ class AsrScreenState extends State<AsrScreen> {
             ElevatedButton(
                 onPressed: isSpeechRecognizeModelInitialed
                     ? () async {
-                  if(isRecognizing) return;
-                  setState(() {
-                    isRecognizing = true;
-                    statusController.text = "正在识别...";
-                  });
-                  Future.delayed(const Duration(milliseconds: 50), ()async{
-                    try {
-                      final rawData = await rootBundle.load("assets/audio/asr_example.wav");
-                      List<int> intData = List.empty(growable: true);
-                      for (var i = 78; i < rawData.lengthInBytes; i += 2) {
-                        intData.add(rawData.getInt16(i, Endian.little).toInt());
-                      }
-                      recognizeResult =
-                          await speechRecognizer?.predict(processInput(intData), true);
-                      resultController.text = recognizeResult ?? "未识别到结果";
-                    } catch (e) {
-                      print(e.toString());
-                    }
-                  });
+                        if (isRecognizing) return;
+                        setState(() {
+                          isRecognizing = true;
+                          statusController.text = "正在识别...";
+                        });
+                        try {
+                          final rawData = await rootBundle
+                              .load("assets/audio/asr_example.wav");
+                          List<int> intData = List.empty(growable: true);
+                          for (var i = 78; i < rawData.lengthInBytes; i += 2) {
+                            intData.add(
+                                rawData.getInt16(i, Endian.little).toInt());
+                          }
+                          recognizeResult = await speechRecognizer
+                              ?.predictWrapper(processInput(intData));
 
-                  speechRecognizer?.reset();
-                  setState(() {
-                    isRecognizing = false;
-                    statusController.text = "识别完成";
-                  });
+                          resultController.text = recognizeResult ?? "未识别到结果";
+                        } catch (e) {
+                          print(e.toString());
+                        }
+
+                        speechRecognizer?.reset();
+                        setState(() {
+                          isRecognizing = false;
+                          statusController.text = "识别完成";
+                        });
                       }
                     : null,
                 child: const Text("打开文件")),
@@ -435,6 +453,33 @@ class AsrScreenState extends State<AsrScreen> {
                 maxLines: 10,
               ),
             ),
+            
+            Row(
+              children: [
+                const Padding(padding: EdgeInsets.only(left: 10, top: 10, right: 10,  bottom: 0),
+                  child: Text("是否使用VAD", style: TextStyle(
+                      fontSize: 16
+                  ),),
+
+                ),
+                Padding(padding: const EdgeInsets.only(left: 0, top: 10, right: 0,  bottom: 0),
+                  child: Switch(
+                      value: useVAD,
+                      activeColor: Colors.blue,
+                      // inactiveThumbColor: Colors.black,
+                      onChanged: (value) {
+                        setState(() {
+                          useVAD = value;
+                        });
+                        if (!vaDetector!.isInitialed){
+                          vaDetector?.initModel();
+                        }
+                      })
+                ),
+
+
+              ],
+            )
           ],
         ),
       ),

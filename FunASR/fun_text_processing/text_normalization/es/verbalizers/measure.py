@@ -15,8 +15,8 @@ from pynini.lib import pynutil
 unit_plural_fem = pynini.string_file(get_abs_path("data/measures/measurements_plural_fem.tsv"))
 unit_plural_masc = pynini.string_file(get_abs_path("data/measures/measurements_plural_masc.tsv"))
 
-unit_singular_fem = pynini.project(unit_plural_fem, "input")
-unit_singular_masc = pynini.project(unit_plural_masc, "input")
+unit_singular_fem = pynini.project(unit_plural_fem, "feats")
+unit_singular_masc = pynini.project(unit_plural_masc, "feats")
 
 unit_plural_fem = pynini.project(unit_plural_fem, "output")
 unit_plural_masc = pynini.project(unit_plural_masc, "output")

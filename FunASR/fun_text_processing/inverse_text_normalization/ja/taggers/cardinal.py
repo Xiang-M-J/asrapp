@@ -202,7 +202,7 @@ class CardinalFst(GraphFst):
         graph_exception = pynini.union(*labels_exception)
 
         self.graph_no_exception = cardinal
-        self.graph = (pynini.project(cardinal, "input") - graph_exception.arcsort()) @ cardinal
+        self.graph = (pynini.project(cardinal, "feats") - graph_exception.arcsort()) @ cardinal
 
         optional_minus_graph = pynini.closure(
             pynutil.insert("negative: ") + pynini.cross("マイナス", '"-"') + DAMO_SPACE, 0, 1

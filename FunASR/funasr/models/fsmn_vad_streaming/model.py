@@ -3,17 +3,15 @@
 # Copyright FunASR (https://github.com/alibaba-damo-academy/FunASR). All Rights Reserved.
 #  MIT License  (https://opensource.org/licenses/MIT)
 
-import os
-import json
-import time
 import math
+import time
+from enum import Enum
+from typing import List, Dict, Any, Optional
+
 import torch
 from torch import nn
-from enum import Enum
-from dataclasses import dataclass
-from funasr.register import tables
-from typing import List, Tuple, Dict, Any, Optional
 
+from funasr.register import tables
 from funasr.utils.datadir_writer import DatadirWriter
 from funasr.utils.load_utils import load_audio_text_image_video, extract_fbank
 
@@ -805,7 +803,7 @@ class FsmnVADStreaming(nn.Module):
             segments_i = self.forward_o(**batch)
             if len(segments_i) > 0:
                 segments.extend(*segments_i)
-
+            print(segments)
         cache["prev_samples"] = audio_sample[:-m]
         if _is_final:
             self.init_cache(cache)

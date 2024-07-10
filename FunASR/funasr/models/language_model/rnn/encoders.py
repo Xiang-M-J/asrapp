@@ -54,13 +54,13 @@ class RNNP(torch.nn.Module):
     def forward(self, xs_pad, ilens, prev_state=None):
         """RNNP forward
 
-        :param torch.Tensor xs_pad: batch of padded input sequences (B, Tmax, idim)
-        :param torch.Tensor ilens: batch of lengths of input sequences (B)
+        :param torch.Tensor xs_pad: batch of padded feats sequences (B, Tmax, idim)
+        :param torch.Tensor ilens: batch of lengths of feats sequences (B)
         :param torch.Tensor prev_state: batch of previous RNN states
         :return: batch of hidden state sequences (B, Tmax, hdim)
         :rtype: torch.Tensor
         """
-        logging.debug(self.__class__.__name__ + " input lengths: " + str(ilens))
+        logging.debug(self.__class__.__name__ + " feats lengths: " + str(ilens))
         elayer_states = []
         for layer in six.moves.range(self.elayers):
             if not isinstance(ilens, torch.Tensor):
@@ -130,20 +130,20 @@ class RNN(torch.nn.Module):
     def forward(self, xs_pad, ilens, prev_state=None):
         """RNN forward
 
-        :param torch.Tensor xs_pad: batch of padded input sequences (B, Tmax, D)
-        :param torch.Tensor ilens: batch of lengths of input sequences (B)
+        :param torch.Tensor xs_pad: batch of padded feats sequences (B, Tmax, D)
+        :param torch.Tensor ilens: batch of lengths of feats sequences (B)
         :param torch.Tensor prev_state: batch of previous RNN states
         :return: batch of hidden state sequences (B, Tmax, eprojs)
         :rtype: torch.Tensor
         """
-        logging.debug(self.__class__.__name__ + " input lengths: " + str(ilens))
+        logging.debug(self.__class__.__name__ + " feats lengths: " + str(ilens))
         if not isinstance(ilens, torch.Tensor):
             ilens = torch.tensor(ilens)
         xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True)
         self.nbrnn.flatten_parameters()
         if prev_state is not None and self.nbrnn.bidirectional:
             # We assume that when previous state is passed,
-            # it means that we're streaming the input
+            # it means that we're streaming the feats
             # and therefore cannot propagate backward BRNN state
             # (otherwise it goes in the wrong direction)
             prev_state = reset_backward_rnn_state(prev_state)
@@ -172,7 +172,7 @@ def reset_backward_rnn_state(states):
 class VGG2L(torch.nn.Module):
     """VGG-like module
 
-    :param int in_channel: number of input channels
+    :param int in_channel: number of feats channels
     """
 
     def __init__(self, in_channel=1):
@@ -188,17 +188,17 @@ class VGG2L(torch.nn.Module):
     def forward(self, xs_pad, ilens, **kwargs):
         """VGG2L forward
 
-        :param torch.Tensor xs_pad: batch of padded input sequences (B, Tmax, D)
-        :param torch.Tensor ilens: batch of lengths of input sequences (B)
+        :param torch.Tensor xs_pad: batch of padded feats sequences (B, Tmax, D)
+        :param torch.Tensor ilens: batch of lengths of feats sequences (B)
         :return: batch of padded hidden state sequences (B, Tmax // 4, 128 * D // 4)
         :rtype: torch.Tensor
         """
-        logging.debug(self.__class__.__name__ + " input lengths: " + str(ilens))
+        logging.debug(self.__class__.__name__ + " feats lengths: " + str(ilens))
 
         # x: utt x frame x dim
         # xs_pad = F.pad_sequence(xs_pad)
 
-        # x: utt x 1 (input channel num) x frame x dim
+        # x: utt x 1 (feats channel num) x frame x dim
         xs_pad = xs_pad.view(
             xs_pad.size(0),
             xs_pad.size(1),
@@ -221,7 +221,7 @@ class VGG2L(torch.nn.Module):
         ilens = np.array(np.ceil(ilens / 2), dtype=np.int64)
         ilens = np.array(np.ceil(np.array(ilens, dtype=np.float32) / 2), dtype=np.int64).tolist()
 
-        # x: utt_list of frame (remove zeropaded frames) x (input channel num x dim)
+        # x: utt_list of frame (remove zeropaded frames) x (feats channel num x dim)
         xs_pad = xs_pad.transpose(1, 2)
         xs_pad = xs_pad.contiguous().view(
             xs_pad.size(0), xs_pad.size(1), xs_pad.size(2) * xs_pad.size(3)
@@ -239,7 +239,7 @@ class Encoder(torch.nn.Module):
     :param int eprojs: number of projection units of encoder network
     :param np.ndarray subsample: list of subsampling numbers
     :param float dropout: dropout rate
-    :param int in_channel: number of input channels
+    :param int in_channel: number of feats channels
     """
 
     def __init__(self, etype, idim, elayers, eunits, eprojs, subsample, dropout, in_channel=1):
@@ -297,8 +297,8 @@ class Encoder(torch.nn.Module):
     def forward(self, xs_pad, ilens, prev_states=None):
         """Encoder forward
 
-        :param torch.Tensor xs_pad: batch of padded input sequences (B, Tmax, D)
-        :param torch.Tensor ilens: batch of lengths of input sequences (B)
+        :param torch.Tensor xs_pad: batch of padded feats sequences (B, Tmax, D)
+        :param torch.Tensor ilens: batch of lengths of feats sequences (B)
         :param torch.Tensor prev_state: batch of previous encoder hidden states (?, ...)
         :return: batch of hidden state sequences (B, Tmax, eprojs)
         :rtype: torch.Tensor
@@ -322,7 +322,7 @@ def encoder_for(args, idim, subsample):
     """Instantiates an encoder module given the program arguments
 
     :param Namespace args: The arguments
-    :param int or List of integer idim: dimension of input, e.g. 83, or
+    :param int or List of integer idim: dimension of feats, e.g. 83, or
                                         List of dimensions of inputs, e.g. [83,83]
     :param List or List of List subsample: subsample factors, e.g. [1,2,2,1,1], or
                                         List of subsample factors of each encoder.

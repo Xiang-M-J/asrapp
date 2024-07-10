@@ -10,7 +10,7 @@ class MossFormerDecoder(nn.ConvTranspose1d):
     kernel_size : int
         Length of filters.
     in_channels : int
-        Number of  input channels.
+        Number of  feats channels.
     out_channels : int
         Number of output channels.
 
@@ -40,7 +40,7 @@ class MossFormerDecoder(nn.ConvTranspose1d):
         """
 
         if x.dim() not in [2, 3]:
-            raise RuntimeError("{} accept 3/4D tensor as input".format(self.__name__))
+            raise RuntimeError("{} accept 3/4D tensor as feats".format(self.__name__))
         x = super().forward(x if x.dim() == 3 else torch.unsqueeze(x, 1))
 
         if torch.squeeze(x).dim() == 1:

@@ -267,9 +267,9 @@ class ContextualParaformerDecoder(ParaformerSANMDecoder):
             hs_pad: encoded memory, float32  (batch, maxlen_in, feat)
             hlens: (batch)
             ys_in_pad:
-                input token ids, int64 (batch, maxlen_out)
+                feats token ids, int64 (batch, maxlen_out)
                 if input_layer == "embed"
-                input tensor (batch, maxlen_out, #mels) in the other cases
+                feats tensor (batch, maxlen_out, #mels) in the other cases
             ys_in_lens: (batch)
         Returns:
             (tuple): tuple containing:

@@ -9,7 +9,7 @@ from funasr.models.decoder.mossformer_decoder import MossFormerDecoder
 
 
 class MossFormer(FunASRModel):
-    """The MossFormer model for separating input mixed speech into different speaker's speech.
+    """The MossFormer model for separating feats mixed speech into different speaker's speech.
 
     Arguments
     ---------

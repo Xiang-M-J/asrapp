@@ -85,7 +85,7 @@ def characterize(string):
             res.append(char)
             i += 1
         else:
-            # some input looks like: <unk><noise>, we want to separate it to two words.
+            # some feats looks like: <unk><noise>, we want to separate it to two words.
             sep = " "
             if char == "<":
                 sep = ">"
@@ -341,8 +341,8 @@ def default_cluster(word):
 
 def get_args():
     parser = argparse.ArgumentParser(description="wer cal")
-    parser.add_argument("--ref", type=str, help="Text input path")
-    parser.add_argument("--ref_ocr", type=str, help="Text input path")
+    parser.add_argument("--ref", type=str, help="Text feats path")
+    parser.add_argument("--ref_ocr", type=str, help="Text feats path")
     parser.add_argument("--rec_name", type=str, action="append", default=[])
     parser.add_argument("--rec_file", type=str, action="append", default=[])
     parser.add_argument("--verbose", type=int, default=1, help="show")

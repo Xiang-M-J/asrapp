@@ -129,7 +129,7 @@ def transcribe(
     if dtype == torch.float32:
         decode_options["fp16"] = False
 
-    # Pad 30-seconds of silence to the input audio, for slicing
+    # Pad 30-seconds of silence to the feats audio, for slicing
     mel = log_mel_spectrogram(audio, model.dims.n_mels, padding=N_SAMPLES)
     content_frames = mel.shape[-1] - N_FRAMES
     content_duration = float(content_frames * HOP_LENGTH / SAMPLE_RATE)

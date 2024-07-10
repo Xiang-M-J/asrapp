@@ -17,7 +17,7 @@ FunASR has open-sourced a large number of pre-trained models on industrial data.
 
 For command-line invocation:
 ```shell
-funasr ++model=paraformer-zh ++vad_model="fsmn-vad" ++punc_model="ct-punc" ++input=asr_example_zh.wav
+funasr ++model=paraformer-zh ++vad_model="fsmn-vad" ++punc_model="ct-punc" ++feats=asr_example_zh.wav
 ```
 
 For python code invocation (recommended): 
@@ -352,7 +352,7 @@ Assuming the training model path is: ./model_dir, if a configuration.json file h
 
 For example, for shell inference:
 ```shell
-python -m funasr.bin.inference ++model="./model_dir" ++input=="${input}" ++output_dir="${output_dir}"
+python -m funasr.bin.inference ++model="./model_dir" ++feats=="${feats}" ++output_dir="${output_dir}"
 ```
 
 Python inference
@@ -377,7 +377,7 @@ python -m funasr.bin.inference \
 ++init_param="${init_param}" \
 ++tokenizer_conf.token_list="${tokens}" \
 ++frontend_conf.cmvn_file="${cmvn_file}" \
-++input="${input}" \
+++feats="${feats}" \
 ++output_dir="${output_dir}" \
 ++device="${device}"
 ```

@@ -28,7 +28,7 @@ def main_hydra(cfg: DictConfig):
     model = AutoModel(**kwargs)
 
     res = model.export(
-        input=kwargs.get("input", None),
+        input=kwargs.get("feats", None),
         type=kwargs.get("type", "onnx"),
         quantize=kwargs.get("quantize", False),
         fallback_num=kwargs.get("fallback-num", 5),

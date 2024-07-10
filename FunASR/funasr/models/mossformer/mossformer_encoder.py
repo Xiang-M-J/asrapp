@@ -221,7 +221,7 @@ class MossFormerEncoder(nn.Module):
     kernel_size : int
         Length of filters.
     in_channels : int
-        Number of  input channels.
+        Number of  feats channels.
     out_channels : int
         Number of output channels.
 
@@ -281,7 +281,7 @@ class MossFormerM(nn.Module):
     num_blocks : int
         Number of mossformer blocks to include.
     d_model : int
-        The dimension of the input embedding.
+        The dimension of the feats embedding.
     attn_dropout : float
         Dropout for the self-attention (Optional).
     group_size: int

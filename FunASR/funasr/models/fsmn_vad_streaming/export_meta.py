@@ -7,6 +7,8 @@ import types
 
 import numpy as np
 import torch
+
+from funasr.models.fsmn_vad_streaming.encoder import VADHelp
 from funasr.register import tables
 
 
@@ -29,6 +31,7 @@ def export_rebuild_model_my(model, **kwargs):
     is_onnx = kwargs.get("type", "onnx") == "onnx"
     encoder_class = tables.encoder_classes.get(kwargs["encoder"] + "Export")
     model.encoder = encoder_class(model.encoder, onnx=is_onnx)
+    model.helper = VADHelp()
 
     model.forward = types.MethodType(export_forward_my, model)
     model.export_dummy_inputs = types.MethodType(export_dummy_inputs_my, model)
@@ -47,76 +50,90 @@ def export_forward(self, feats: torch.Tensor, *args, **kwargs):
 
 
 def export_forward_my(self, feats, waveform):
-    is_final = False
-    cache = {}
-    if len(cache) == 0:
-        self.init_cache(cache)
-    cache["stats"].waveform = waveform
-    is_streaming_input = False
-    self.ComputeDecibel(cache=cache)
 
-    args = []
-    cache_frames = self.encoder_conf.get("lorder") + self.encoder_conf.get("rorder") - 1
-    for i in range(4):
-        args.append(torch.zeros(1, self.encoder_conf.get('proj_dim'), cache_frames, 1))
-    scores = self.encoder(feats, *args)[0].to("cpu")  # return B * T * D
-    self.vad_opts.nn_eval_block_size = scores.shape[1]
-    cache["stats"].frm_cnt += scores.shape[1]  # count total frames
-    if cache["stats"].scores is None:
-        cache["stats"].scores = scores  # the first calculation
-    else:
-        cache["stats"].scores = torch.cat((cache["stats"].scores, scores), dim=1)
+    scores = self.encoder(feats)
+    segments = self.helper(scores, waveform)
+    # is_final = False
+    # cache = {}
+    # if len(cache) == 0:
+    #     self.init_cache(cache)
+    # cache["stats"].waveform = waveform
+    # is_streaming_input = False
+    # self.ComputeDecibel(cache=cache)
+    #
+    # args = []
+    # cache_frames = self.encoder_conf.get("lorder") + self.encoder_conf.get("rorder") - 1
+    # for i in range(4):
+    #     args.append(torch.zeros(1, self.encoder_conf.get('proj_dim'), cache_frames, 1))
+    # scores = self.encoder(feats, *args)[0].to("cpu")  # return B * T * D
+    # self.vad_opts.nn_eval_block_size = scores.shape[1]
+    # cache["stats"].frm_cnt += scores.shape[1]  # count total frames
+    # if cache["stats"].scores is None:
+    #     cache["stats"].scores = scores  # the first calculation
+    # else:
+    #     cache["stats"].scores = torch.cat((cache["stats"].scores, scores), dim=1)
+    #
+    # self.DetectLastFrames(cache=cache)
+    #
+    # # contain_seg_start_point  contain_seg_end_point start_ms end_ms
+    # info = torch.zeros(len(cache["stats"].output_data_buf), 4, dtype=torch.int64)
 
-    self.DetectLastFrames(cache=cache)
-    segments = []
-    for batch_num in range(0, feats.shape[0]):  # only support batch_size = 1 now
-        segment_batch = []
-        if len(cache["stats"].output_data_buf) > 0:
-            for i in range(
-                    cache["stats"].output_data_buf_offset, len(cache["stats"].output_data_buf)
-            ):
-                if (
-                        is_streaming_input
-                ):  # in this case, return [beg, -1], [], [-1, end], [beg, end]
-                    if not cache["stats"].output_data_buf[i].contain_seg_start_point:
-                        continue
-                    if (
-                            not cache["stats"].next_seg
-                            and not cache["stats"].output_data_buf[i].contain_seg_end_point
-                    ):
-                        continue
-                    start_ms = (
-                        cache["stats"].output_data_buf[i].start_ms
-                        if cache["stats"].next_seg
-                        else -1
-                    )
-                    if cache["stats"].output_data_buf[i].contain_seg_end_point:
-                        end_ms = cache["stats"].output_data_buf[i].end_ms
-                        cache["stats"].next_seg = True
-                        cache["stats"].output_data_buf_offset += 1
-                    else:
-                        end_ms = -1
-                        cache["stats"].next_seg = False
-                    segment = [start_ms, end_ms]
+    # for i in range(len(cache["stats"].output_data_buf)):
+    #     info[i][0] = int(cache["stats"].output_data_buf[i].contain_seg_start_point)
+    #     info[i][1] = int(cache["stats"].output_data_buf[i].contain_seg_end_point)
+    #     info[i][2] = cache["stats"].output_data_buf[i].start_ms
+    #     info[i][3] = cache["stats"].output_data_buf[i].end_ms
 
-                else:  # in this case, return [beg, end]
+    # segments = torch.from_numpy(np.array([]))
+    # segments = []
 
-                    if not is_final and (
-                            not cache["stats"].output_data_buf[i].contain_seg_start_point
-                            or not cache["stats"].output_data_buf[i].contain_seg_end_point
-                    ):
-                        continue
-                    segment = [
-                        cache["stats"].output_data_buf[i].start_ms,
-                        cache["stats"].output_data_buf[i].end_ms,
-                    ]
-                    cache["stats"].output_data_buf_offset += 1  # need update this parameter
-
-                segment_batch.append(segment)
-
-        if segment_batch:
-            segments.append(segment_batch)
-    return scores, torch.from_numpy(np.array(segments))
+    # segment_batch = []
+    # if len(cache["stats"].output_data_buf) > 0:
+    #     for i in range(
+    #             cache["stats"].output_data_buf_offset, len(cache["stats"].output_data_buf)
+    #     ):
+    #         if (
+    #                 is_streaming_input
+    #         ):  # in this case, return [beg, -1], [], [-1, end], [beg, end]
+    #             if not cache["stats"].output_data_buf[i].contain_seg_start_point:
+    #                 continue
+    #             if (
+    #                     not cache["stats"].next_seg
+    #                     and not cache["stats"].output_data_buf[i].contain_seg_end_point
+    #             ):
+    #                 continue
+    #             start_ms = (
+    #                 cache["stats"].output_data_buf[i].start_ms
+    #                 if cache["stats"].next_seg
+    #                 else -1
+    #             )
+    #             if cache["stats"].output_data_buf[i].contain_seg_end_point:
+    #                 end_ms = cache["stats"].output_data_buf[i].end_ms
+    #                 cache["stats"].next_seg = True
+    #                 cache["stats"].output_data_buf_offset += 1
+    #             else:
+    #                 end_ms = -1
+    #                 cache["stats"].next_seg = False
+    #             segment = [start_ms, end_ms]
+    #
+    #         else:  # in this case, return [beg, end]
+    #
+    #             if not is_final and (
+    #                     not cache["stats"].output_data_buf[i].contain_seg_start_point
+    #                     or not cache["stats"].output_data_buf[i].contain_seg_end_point
+    #             ):
+    #                 continue
+    #             segment = [
+    #                 cache["stats"].output_data_buf[i].start_ms,
+    #                 cache["stats"].output_data_buf[i].end_ms,
+    #             ]
+    #             cache["stats"].output_data_buf_offset += 1  # need update this parameter
+    #
+    #         segment_batch.append(segment)
+    #
+    #     if segment_batch:
+    #         segments.append(segment_batch)
+    return scores, segments
 
 
 def export_dummy_inputs(self, data_in=None, frame=30):
@@ -135,9 +152,9 @@ def export_dummy_inputs(self, data_in=None, frame=30):
 
 
 def export_dummy_inputs_my(self, frame=30):
-    speech = torch.randn(1, frame, self.encoder_conf.get("input_dim"))
+    feats = torch.randn(1, frame, self.encoder_conf.get("input_dim"))
     waveform = torch.randn(1, frame * 100)
-    return speech, waveform
+    return feats, waveform
 
 
 def export_input_names(self):
@@ -145,7 +162,7 @@ def export_input_names(self):
 
 
 def export_input_names_my(self):
-    return ["speech", "waveform"]
+    return ["feats", "waveform"]
 
 
 def export_output_names(self):
@@ -153,7 +170,7 @@ def export_output_names(self):
 
 
 def export_output_names_my(self):
-    return ["scores", "segments"]
+    return ["segments", "output"]
 
 
 def export_dynamic_axes(self):
@@ -161,10 +178,12 @@ def export_dynamic_axes(self):
         "speech": {1: "feats_length"},
     }
 
+
 def export_dynamic_axes_my(self):
     return {
-        "speech": {1: "feats_length"},
-        "waveform": {1: "wave_length"}
+        "feats": {1: "feats_length"},
+        "waveform": {1: "wave_length"},
+
     }
 
 

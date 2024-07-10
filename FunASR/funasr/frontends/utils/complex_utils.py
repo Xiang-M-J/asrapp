@@ -74,9 +74,9 @@ def complex_norm(c: Union[torch.Tensor, ComplexTensor], dim=-1, keepdim=False) -
 
 
 def einsum(equation, *operands):
-    # NOTE: Do not mix ComplexTensor and torch.complex in the input!
+    # NOTE: Do not mix ComplexTensor and torch.complex in the feats!
     # NOTE (wangyou): Until PyTorch 1.9.0, torch.einsum does not support
-    # mixed input with complex and real tensors.
+    # mixed feats with complex and real tensors.
     if len(operands) == 1:
         if isinstance(operands[0], (tuple, list)):
             operands = operands[0]
@@ -118,7 +118,7 @@ def inverse(c: Union[torch.Tensor, ComplexTensor]) -> Union[torch.Tensor, Comple
 def matmul(
     a: Union[torch.Tensor, ComplexTensor], b: Union[torch.Tensor, ComplexTensor]
 ) -> Union[torch.Tensor, ComplexTensor]:
-    # NOTE: Do not mix ComplexTensor and torch.complex in the input!
+    # NOTE: Do not mix ComplexTensor and torch.complex in the feats!
     # NOTE (wangyou): Until PyTorch 1.9.0, torch.matmul does not support
     # multiplication between complex and real tensors.
     if isinstance(a, ComplexTensor) or isinstance(b, ComplexTensor):
@@ -153,9 +153,9 @@ def reverse(a: Union[torch.Tensor, ComplexTensor], dim=0):
 
 def solve(b: Union[torch.Tensor, ComplexTensor], a: Union[torch.Tensor, ComplexTensor]):
     """Solve the linear equation ax = b."""
-    # NOTE: Do not mix ComplexTensor and torch.complex in the input!
+    # NOTE: Do not mix ComplexTensor and torch.complex in the feats!
     # NOTE (wangyou): Until PyTorch 1.9.0, torch.solve does not support
-    # mixed input with complex and real tensors.
+    # mixed feats with complex and real tensors.
     if isinstance(a, ComplexTensor) or isinstance(b, ComplexTensor):
         if isinstance(a, ComplexTensor) and isinstance(b, ComplexTensor):
             return FC.solve(b, a, return_LU=False)

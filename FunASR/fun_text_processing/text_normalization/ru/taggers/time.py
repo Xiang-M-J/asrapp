@@ -29,7 +29,7 @@ class TimeFst(GraphFst):
         number = (
             pynini.closure(pynini.cross("0", ""), 0, 1) + number_names["cardinal_names_nominative"]
         )
-        hour_options = pynini.project(increment_hour_ordinal, "input")
+        hour_options = pynini.project(increment_hour_ordinal, "feats")
         hour_options = hour_options | pynini.project(convert_hour, "output")
 
         hour_exeption_ends_with_one = pynini.union(*["01", "21"])

@@ -51,7 +51,7 @@ def sv_preprocess(inputs: Union[np.ndarray, list]):
             data = torch.from_numpy(data)
         else:
             raise ValueError(
-                "modelscope error: The input type is restricted to audio address and nump array."
+                "modelscope error: The feats type is restricted to audio address and nump array."
             )
         output.append(data)
     return output

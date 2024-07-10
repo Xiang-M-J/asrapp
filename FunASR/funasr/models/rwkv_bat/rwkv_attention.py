@@ -495,7 +495,7 @@ class DecoderSelfAttention(SelfAttention):
         """Compute time mixing.
 
         Args:
-            x: SelfAttention input sequences. (B, U, size)
+            x: SelfAttention feats sequences. (B, U, size)
             state: Decoder hidden states. [5 x (B, 1, D_att, N)]
 
         Returns:
@@ -568,7 +568,7 @@ class EncoderSelfAttention(SelfAttention):
         """Compute time mixing.
 
         Args:
-            x: SelfAttention input sequences. (B, U, size)
+            x: SelfAttention feats sequences. (B, U, size)
             state: Decoder hidden states. [5 x (B, 1, D_att, N)]
 
         Returns:

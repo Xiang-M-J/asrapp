@@ -114,7 +114,7 @@ class MFCCAEncoder(AbsEncoder):
         positional_dropout_rate (float): Dropout rate after adding positional encoding.
         input_layer (Union[str, torch.nn.Module]): Input layer type.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             If True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             If False, no additional linear will be applied. i.e. x -> x + att(x)

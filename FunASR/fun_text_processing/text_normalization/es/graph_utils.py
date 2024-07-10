@@ -4,11 +4,11 @@ from fun_text_processing.text_normalization.es import LOCALIZATION
 from fun_text_processing.text_normalization.es.utils import get_abs_path, load_labels
 from pynini.lib import pynutil
 
-digits = pynini.project(pynini.string_file(get_abs_path("data/numbers/digit.tsv")), "input")
-tens = pynini.project(pynini.string_file(get_abs_path("data/numbers/ties.tsv")), "input")
-teens = pynini.project(pynini.string_file(get_abs_path("data/numbers/teen.tsv")), "input")
-twenties = pynini.project(pynini.string_file(get_abs_path("data/numbers/twenties.tsv")), "input")
-hundreds = pynini.project(pynini.string_file(get_abs_path("data/numbers/hundreds.tsv")), "input")
+digits = pynini.project(pynini.string_file(get_abs_path("data/numbers/digit.tsv")), "feats")
+tens = pynini.project(pynini.string_file(get_abs_path("data/numbers/ties.tsv")), "feats")
+teens = pynini.project(pynini.string_file(get_abs_path("data/numbers/teen.tsv")), "feats")
+twenties = pynini.project(pynini.string_file(get_abs_path("data/numbers/twenties.tsv")), "feats")
+hundreds = pynini.project(pynini.string_file(get_abs_path("data/numbers/hundreds.tsv")), "feats")
 
 accents = pynini.string_map([("á", "a"), ("é", "e"), ("í", "i"), ("ó", "o"), ("ú", "u")])
 

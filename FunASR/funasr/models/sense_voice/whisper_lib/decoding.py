@@ -288,7 +288,7 @@ class TokenDecoder:
         Returns
         -------
         tokens : Sequence[Sequence[Tensor]], length = n_audio
-            sequence of Tensors containing candidate token sequences, for each audio input
+            sequence of Tensors containing candidate token sequences, for each audio feats
 
         sum_logprobs : List[List[float]], length = n_audio
             sequence of cumulative log probabilities corresponding to the above

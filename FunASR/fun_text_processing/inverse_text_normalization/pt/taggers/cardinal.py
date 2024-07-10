@@ -156,7 +156,7 @@ class CardinalFst(GraphFst):
             ) @ (pynini.closure(DAMO_DIGIT) + (DAMO_DIGIT - "0") + pynini.closure(DAMO_DIGIT))
 
             graph_hundreds_except_hundred = (
-                pynini.project(graph_hundreds, "input") - "cento"
+                pynini.project(graph_hundreds, "feats") - "cento"
             ) @ graph_hundreds
 
             graph_hundred_component_prefix_e = pynini.union(
@@ -381,9 +381,9 @@ class CardinalFst(GraphFst):
         self.digits_from_year = digits_from_year
 
         # don't convert cardinals from zero to nine inclusive
-        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "input")
+        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "feats")
 
-        self.graph = (pynini.project(graph, "input") - graph_exception.arcsort()) @ graph
+        self.graph = (pynini.project(graph, "feats") - graph_exception.arcsort()) @ graph
 
         optional_minus_graph = pynini.closure(
             pynutil.insert("negative: ") + pynini.cross("menos", '"-"') + DAMO_SPACE, 0, 1

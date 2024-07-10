@@ -53,7 +53,7 @@ def get_parser():
         default=False,
         required=True,
         type=str,
-        help="input text",
+        help="feats text",
     )
     parser.add_argument(
         "--seg-file",

@@ -5,7 +5,7 @@
 
 # method1, inference from model hub
 
-# for more input type, please ref to readme.md
+# for more feats type, please ref to readme.md
 input="https://isv-data.oss-cn-hangzhou.aliyuncs.com/ics/MaaS/ASR/test_audio/asr_example_zh.wav"
 
 output_dir="./outputs/debug"

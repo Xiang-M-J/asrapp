@@ -39,8 +39,8 @@ class PositionalEncoding(torch.nn.Module):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
-        reverse (bool): Whether to reverse the input position. Only for
+        max_len (int): Maximum feats length.
+        reverse (bool): Whether to reverse the feats position. Only for
         the class LegacyRelPositionalEncoding. We remove it in the current
         class RelPositionalEncoding.
     """
@@ -99,7 +99,7 @@ class ScaledPositionalEncoding(PositionalEncoding):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_len (int): Maximum feats length.
 
     """
 
@@ -135,10 +135,10 @@ class LearnableFourierPosEnc(torch.nn.Module):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_len (int): Maximum feats length.
         gamma (float): init parameter for the positional kernel variance
             see https://arxiv.org/pdf/2106.02795.pdf.
-        apply_scaling (bool): Whether to scale the input before adding the pos encoding.
+        apply_scaling (bool): Whether to scale the feats before adding the pos encoding.
         hidden_dim (int): if not None, we modulate the pos encodings with
             an MLP whose hidden layer has hidden_dim neurons.
     """
@@ -222,7 +222,7 @@ class LegacyRelPositionalEncoding(PositionalEncoding):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_len (int): Maximum feats length.
 
     """
 
@@ -262,7 +262,7 @@ class RelPositionalEncoding(torch.nn.Module):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_len (int): Maximum feats length.
 
     """
 
@@ -332,7 +332,7 @@ class StreamPositionalEncoding(torch.nn.Module):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_len (int): Maximum feats length.
 
     """
 
@@ -448,7 +448,7 @@ class StreamingRelPositionalEncoding(torch.nn.Module):
     """Relative positional encoding.
     Args:
         size: Module size.
-        max_len: Maximum input length.
+        max_len: Maximum feats length.
         dropout_rate: Dropout rate.
     """
 

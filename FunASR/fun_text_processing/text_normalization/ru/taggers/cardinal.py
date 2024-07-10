@@ -141,7 +141,7 @@ class CardinalFst(GraphFst):
         # at least 1 alpha and 1 digit is present
         at_least_one_alpha_num = (
             DAMO_SIGMA
-            + (RU_ALPHA | pynini.project(TO_CYRILLIC, "input"))
+            + (RU_ALPHA | pynini.project(TO_CYRILLIC, "feats"))
             + DAMO_SIGMA
             + DAMO_DIGIT
             + DAMO_SIGMA
@@ -149,7 +149,7 @@ class CardinalFst(GraphFst):
             DAMO_SIGMA
             + DAMO_DIGIT
             + DAMO_SIGMA
-            + (RU_ALPHA | pynini.project(TO_CYRILLIC, "input"))
+            + (RU_ALPHA | pynini.project(TO_CYRILLIC, "feats"))
             + DAMO_SIGMA
         )
         serial_graph = pynini.compose(at_least_one_alpha_num, serial_graph.optimize()).optimize()

@@ -23,8 +23,8 @@ class CTCPrefixScoreTH(object):
     def __init__(self, x, xlens, blank, eos, margin=0):
         """Construct CTC prefix scorer
 
-        :param torch.Tensor x: input label posterior sequences (B, T, O)
-        :param torch.Tensor xlens: input lengths (B,)
+        :param torch.Tensor x: feats label posterior sequences (B, T, O)
+        :param torch.Tensor xlens: feats lengths (B,)
         :param int blank: blank label id
         :param int eos: end-of-sequence id
         :param int margin: margin parameter for windowing (0 means no windowing)
@@ -45,7 +45,7 @@ class CTCPrefixScoreTH(object):
             if l < self.input_length:
                 x[i, l:, :] = self.logzero
                 x[i, l:, blank] = 0
-        # Reshape input x
+        # Reshape feats x
         xn = x.transpose(0, 1)  # (B, T, O) -> (T, B, O)
         xb = xn[:, :, self.blank].unsqueeze(2).expand(-1, -1, self.odim)
         self.x = torch.stack([xn, xb])  # (2, T, B, O)
@@ -90,7 +90,7 @@ class CTCPrefixScoreTH(object):
         else:
             r_prev, s_prev, f_min_prev, f_max_prev = state
 
-        # select input dimensions for scoring
+        # select feats dimensions for scoring
         if self.scoring_num > 0:
             scoring_idmap = torch.full((n_bh, self.odim), -1, dtype=torch.long, device=self.device)
             snum = self.scoring_num
@@ -205,7 +205,7 @@ class CTCPrefixScoreTH(object):
     def extend_prob(self, x):
         """Extend CTC prob.
 
-        :param torch.Tensor x: input label posterior sequences (B, T, O)
+        :param torch.Tensor x: feats label posterior sequences (B, T, O)
         """
 
         if self.x.shape[1] < x.shape[1]:  # self.x (2,T,B,O); x (B,T,O)

@@ -88,7 +88,7 @@ class GraphFst:
         Wraps class name around to given fst
 
         Args:
-            fst: input fst
+            fst: feats fst
 
         Returns:
             Fst: fst
@@ -100,7 +100,7 @@ class GraphFst:
         Deletes class name wrap around output of given fst
 
         Args:
-            fst: input fst
+            fst: feats fst
 
         Returns:
             Fst: fst

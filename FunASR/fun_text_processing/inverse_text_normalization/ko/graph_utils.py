@@ -129,7 +129,7 @@ def convert_space(fst) -> "pynini.FstLike":
     This is making transducer significantly slower, so only use when there could be potential spaces within quotes, otherwise leave it.
 
     Args:
-        fst: input fst
+        fst: feats fst
 
     Returns output fst where breaking spaces are converted to non breaking spaces
     """
@@ -180,7 +180,7 @@ class GraphFst:
         Wraps class name around to given fst
 
         Args:
-            fst: input fst
+            fst: feats fst
 
         Returns:
             Fst: fst
@@ -192,7 +192,7 @@ class GraphFst:
         Deletes class name wrap around output of given fst
 
         Args:
-            fst: input fst
+            fst: feats fst
 
         Returns:
             Fst: fst

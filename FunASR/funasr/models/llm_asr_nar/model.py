@@ -558,7 +558,7 @@ class LLMASRNARPrompt(nn.Module):
                 inputs_embeds = self.llm.model.model.model.embed_tokens(input_ids)
 
             if audio_mask is not None:
-                # inputs_embeds： [bos, prompt, input, pad, target]
+                # inputs_embeds： [bos, prompt, feats, pad, target]
                 prompt_bos_length = kwargs.get("prompt_bos_length", None)
                 assert prompt_bos_length is not None
                 prompt_bos_length = prompt_bos_length[0].item()
@@ -574,12 +574,12 @@ class LLMASRNARPrompt(nn.Module):
                 )
                 inputs_embeds = F.pad(
                     inputs_embeds[:, 1:, :], (0, 0, 0, 1, 0, 0), value=0.0
-                )  # [prompt, input, pad, target, 0.0]
+                )  # [prompt, feats, pad, target, 0.0]
 
-        # labels_ids: [bos, prompt, input, target, eos] -> [-1, -1, input, target, eos]
+        # labels_ids: [bos, prompt, feats, target, eos] -> [-1, -1, feats, target, eos]
         # loss:
-        # inputs_embeds[:-1] -> [prompt, input, pad, target]
-        # labels_ids[1:] ->  [prompt, input, target, eos] -> [-1, input, target, eos];
+        # inputs_embeds[:-1] -> [prompt, feats, pad, target]
+        # labels_ids[1:] ->  [prompt, feats, target, eos] -> [-1, feats, target, eos];
         model_outputs = self.llm(
             inputs_embeds=inputs_embeds, attention_mask=attention_mask, labels=labels_ids
         )

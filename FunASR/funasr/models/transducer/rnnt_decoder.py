@@ -111,7 +111,7 @@ class RNNTDecoder(torch.nn.Module):
         """Encode source label sequences.
 
         Args:
-            x: RNN input sequences. (B, D_emb)
+            x: RNN feats sequences. (B, D_emb)
             state: Decoder hidden states. ((N, B, D_dec), (N, B, D_dec) or None)
 
         Returns:

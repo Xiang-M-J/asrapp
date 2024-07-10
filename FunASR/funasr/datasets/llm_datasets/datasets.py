@@ -82,7 +82,7 @@ class AudioLLMNARDataset(torch.utils.data.Dataset):
 
         # bos prompt audio bos target
         # prompt_input = "{}{}".format(self.prompt_pre, target)
-        # prompt_input_ids = self.tokenizer.encode(prompt_input) #[bos, prompt, input]
+        # prompt_input_ids = self.tokenizer.encode(prompt_input) #[bos, prompt, feats]
         # audio_length = len(prompt_input_ids) - prompt_ids_length
         target_ids = self.tokenizer.encode(target)
         if target_ids[0] == self.tokenizer.bos_token_id:
@@ -91,10 +91,10 @@ class AudioLLMNARDataset(torch.utils.data.Dataset):
         audio_length = target_ids_length
         input_ids = (
             prompt_ids_pre + target_ids + [self.tokenizer.pad_token_id] + target_ids
-        )  # [bos, prompt, input, pad, target]
+        )  # [bos, prompt, feats, pad, target]
         input_ids = torch.tensor(
             copy.deepcopy(input_ids), dtype=torch.int64
-        )  # [bos, prompt, input, pad, target]
+        )  # [bos, prompt, feats, pad, target]
         input_ids[prompt_ids_length : prompt_ids_length + audio_length] = (
             -1
         )  # [bos, prompt,-1, pad, target] # it is no need, only for check
@@ -102,7 +102,7 @@ class AudioLLMNARDataset(torch.utils.data.Dataset):
 
         # bos prompt audio target eos
         # prompt_answer = "{}{}".format(self.prompt_pre, target)
-        # prompt_answer_ids = self.tokenizer.encode(prompt_answer) #[bos, prompt, input]
+        # prompt_answer_ids = self.tokenizer.encode(prompt_answer) #[bos, prompt, feats]
         # answer_length = len(prompt_answer_ids) - prompt_ids_length
         target_ids = self.tokenizer.encode(target)
         if target_ids[0] == self.tokenizer.bos_token_id:
@@ -110,13 +110,13 @@ class AudioLLMNARDataset(torch.utils.data.Dataset):
         # target_ids_length = len(target_ids)
         labels_ids = (
             prompt_ids_pre + target_ids + target_ids + [self.tokenizer.eos_token_id]
-        )  # [bos, prompt, input, target, eos]
+        )  # [bos, prompt, feats, target, eos]
         labels_ids = torch.tensor(
             copy.deepcopy(labels_ids), dtype=torch.int64
-        )  # [bos, prompt, input, target, eos]
-        labels_ids[:prompt_ids_length] = -1  # [-1, -1, input, target, eos]
+        )  # [bos, prompt, feats, target, eos]
+        labels_ids[:prompt_ids_length] = -1  # [-1, -1, feats, target, eos]
         label_mask = labels_ids.ge(0)  # [false, false, true, true, true], length mask
-        labels_ids[~label_mask] = self.IGNORE_INDEX  # [-1, -1, input, target, eos]
+        labels_ids[~label_mask] = self.IGNORE_INDEX  # [-1, -1, feats, target, eos]
 
         audio_mask = (
             [0] * prompt_ids_length + [1] * audio_length + [0] * target_ids_length + [0]
@@ -245,7 +245,7 @@ class AudioLLMDataset(torch.utils.data.Dataset):
         prompt_input_ids = self.tokenizer.encode(prompt_input)
         audio_length = len(prompt_input_ids) - prompt_ids_length
         input_ids = prompt_input_ids + [self.tokenizer.pad_token_id]
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)  # [bos, prompt, input, pad]
+        input_ids = torch.tensor(input_ids, dtype=torch.int64)  # [bos, prompt, feats, pad]
         input_ids[prompt_ids_length:] = -1  # [bos, prompt,-1,-1]
         attention_mask = input_ids.ge(-1)  # [true, true, true, true], length mask
 
@@ -253,10 +253,10 @@ class AudioLLMDataset(torch.utils.data.Dataset):
         prompt_answer_ids = self.tokenizer.encode(prompt_answer)
         answer_length = len(prompt_answer_ids) - prompt_ids_length
         labels_ids = copy.deepcopy(prompt_input_ids) + [self.tokenizer.eos_token_id]
-        labels_ids = torch.tensor(labels_ids, dtype=torch.int64)  # [bos, prompt, input, eos]
-        labels_ids[:prompt_ids_length] = -1  # [-1, -1, input, eos]
+        labels_ids = torch.tensor(labels_ids, dtype=torch.int64)  # [bos, prompt, feats, eos]
+        labels_ids[:prompt_ids_length] = -1  # [-1, -1, feats, eos]
         label_mask = labels_ids.ge(0)  # [False,False,True,True]
-        labels_ids[~label_mask] = self.IGNORE_INDEX  # [-100,-100,input,eos]
+        labels_ids[~label_mask] = self.IGNORE_INDEX  # [-100,-100,feats,eos]
 
         audio_mask = [0] * prompt_ids_length + [1] * audio_length + [0]
         audio_mask = torch.tensor(audio_mask, dtype=torch.float32)
@@ -380,7 +380,7 @@ class AudioLLMARDataset(torch.utils.data.Dataset):
         prompt_input_ids = self.tokenizer.encode(prompt_input)
         audio_length = len(prompt_input_ids) - prompt_ids_length
         input_ids = prompt_input_ids + [self.tokenizer.pad_token_id]
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)  # [bos, prompt, input, pad]
+        input_ids = torch.tensor(input_ids, dtype=torch.int64)  # [bos, prompt, feats, pad]
         input_ids[prompt_ids_length:] = -1  # [bos, prompt,-1,-1]
         attention_mask = input_ids.ge(-1)  # [true, true, true, true], length mask
 
@@ -388,10 +388,10 @@ class AudioLLMARDataset(torch.utils.data.Dataset):
         prompt_answer_ids = self.tokenizer.encode(prompt_answer)
         answer_length = len(prompt_answer_ids) - prompt_ids_length
         labels_ids = copy.deepcopy(prompt_input_ids) + [self.tokenizer.eos_token_id]
-        labels_ids = torch.tensor(labels_ids, dtype=torch.int64)  # [bos, prompt, input, eos]
-        labels_ids[:prompt_ids_length] = -1  # [-1, -1, input, eos]
+        labels_ids = torch.tensor(labels_ids, dtype=torch.int64)  # [bos, prompt, feats, eos]
+        labels_ids[:prompt_ids_length] = -1  # [-1, -1, feats, eos]
         label_mask = labels_ids.ge(0)  # [False,False,True,True]
-        labels_ids[~label_mask] = self.IGNORE_INDEX  # [-100,-100,input,eos]
+        labels_ids[~label_mask] = self.IGNORE_INDEX  # [-100,-100,feats,eos]
 
         audio_mask = [0] * prompt_ids_length + [1] * audio_length + [0]
         audio_mask = torch.tensor(audio_mask, dtype=torch.float32)

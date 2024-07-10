@@ -175,7 +175,7 @@ class Decoder(torch.nn.Module, ScorerInterface):
         hlens = [list(map(int, hlens[idx])) for idx in range(self.num_encs)]
 
         self.loss = None
-        # prepare input and output word sequences with sos/eos IDs
+        # prepare feats and output word sequences with sos/eos IDs
         eos = ys[0].new([self.eos])
         sos = ys[0].new([self.sos])
         if self.replace_sos:
@@ -195,7 +195,7 @@ class Decoder(torch.nn.Module, ScorerInterface):
         for idx in range(self.num_encs):
             logging.info(
                 self.__class__.__name__
-                + "Number of Encoder:{}; enc{}: input lengths: {}.".format(
+                + "Number of Encoder:{}; enc{}: feats lengths: {}.".format(
                     self.num_encs, idx + 1, hlens[idx]
                 )
             )
@@ -331,7 +331,7 @@ class Decoder(torch.nn.Module, ScorerInterface):
 
         for idx in range(self.num_encs):
             logging.info(
-                "Number of Encoder:{}; enc{}: input lengths: {}.".format(
+                "Number of Encoder:{}; enc{}: feats lengths: {}.".format(
                     self.num_encs, idx + 1, h[0].size(0)
                 )
             )
@@ -619,7 +619,7 @@ class Decoder(torch.nn.Module, ScorerInterface):
         att_idx = min(strm_idx, len(self.att) - 1)
         for idx in range(self.num_encs):
             logging.info(
-                "Number of Encoder:{}; enc{}: input lengths: {}.".format(
+                "Number of Encoder:{}; enc{}: feats lengths: {}.".format(
                     self.num_encs, idx + 1, h[idx].size(1)
                 )
             )
@@ -930,7 +930,7 @@ class Decoder(torch.nn.Module, ScorerInterface):
         hlen = [list(map(int, hlen[idx])) for idx in range(self.num_encs)]
 
         self.loss = None
-        # prepare input and output word sequences with sos/eos IDs
+        # prepare feats and output word sequences with sos/eos IDs
         eos = ys[0].new([self.eos])
         sos = ys[0].new([self.sos])
         if self.replace_sos:

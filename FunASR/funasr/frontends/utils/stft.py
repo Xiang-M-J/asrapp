@@ -72,7 +72,7 @@ class Stft(torch.nn.Module):
         bs = input.size(0)
         if input.dim() == 3:
             multi_channel = True
-            # input: (Batch, Nsample, Channels) -> (Batch * Channels, Nsample)
+            # feats: (Batch, Nsample, Channels) -> (Batch * Channels, Nsample)
             input = input.transpose(1, 2).reshape(-1, input.size(1))
         else:
             multi_channel = False
@@ -208,7 +208,7 @@ class Stft(torch.nn.Module):
         if is_complex(input):
             input = torch.stack([input.real, input.imag], dim=-1)
         elif input.shape[-1] != 2:
-            raise TypeError("Invalid input type")
+            raise TypeError("Invalid feats type")
         input = input.transpose(1, 2)
 
         wavs = istft(

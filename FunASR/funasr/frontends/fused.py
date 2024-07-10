@@ -129,7 +129,7 @@ class FusedFrontends(nn.Module):
 
             input_feats = torch.cat(
                 self.feats_final, dim=-1
-            )  # change the input size of the preencoder : proj_dim * n_frontends
+            )  # change the feats size of the preencoder : proj_dim * n_frontends
             feats_lens = torch.ones_like(self.feats[0][1]) * (m)
 
         else:

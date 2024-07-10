@@ -14,7 +14,7 @@ model = AutoModel(
 )
 
 res = model.export(type="torchscripts", quantize=False)
-# res = model.export(type="bladedisc", input=f"{model.model_path}/example/asr_example.wav")
+# res = model.export(type="bladedisc", feats=f"{model.model_path}/example/asr_example.wav")
 print(res)
 
 

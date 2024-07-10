@@ -549,10 +549,10 @@ class StreamingConvInput(torch.nn.Module):
     def forward(
         self, x: torch.Tensor, mask: Optional[torch.Tensor], chunk_size: Optional[torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Encode input sequences.
+        """Encode feats sequences.
         Args:
-            x: ConvInput input sequences. (B, T, D_feats)
-            mask: Mask of input sequences. (B, 1, T)
+            x: ConvInput feats sequences. (B, T, D_feats)
+            mask: Mask of feats sequences. (B, 1, T)
         Returns:
             x: ConvInput output sequences. (B, sub(T), D_out)
             mask: Mask of output sequences. (B, 1, sub(T))
@@ -592,7 +592,7 @@ class StreamingConvInput(torch.nn.Module):
     def create_new_vgg_mask(self, mask: torch.Tensor) -> torch.Tensor:
         """Create a new mask for VGG output sequences.
         Args:
-            mask: Mask of input sequences. (B, T)
+            mask: Mask of feats sequences. (B, T)
         Returns:
             mask: Mask of output sequences. (B, sub(T))
         """
@@ -610,7 +610,7 @@ class StreamingConvInput(torch.nn.Module):
     def create_new_conv2d_mask(self, mask: torch.Tensor) -> torch.Tensor:
         """Create new conformer mask for Conv2d output sequences.
         Args:
-            mask: Mask of input sequences. (B, T)
+            mask: Mask of feats sequences. (B, T)
         Returns:
             mask: Mask of output sequences. (B, sub(T))
         """

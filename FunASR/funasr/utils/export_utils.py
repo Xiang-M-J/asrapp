@@ -166,7 +166,7 @@ def _rescale_encoder_model(model, input_data):
 
 
 def _bladedisc_opt_for_encdec(model, path, enable_fp16):
-    # Get input data
+    # Get feats data
     # TODO: better to use real data
     input_data = model.export_dummy_inputs()
     if isinstance(input_data, torch.Tensor):
@@ -174,7 +174,7 @@ def _bladedisc_opt_for_encdec(model, path, enable_fp16):
     else:
         input_data = tuple([i.cuda() for i in input_data])
 
-    # Get input data for decoder module
+    # Get feats data for decoder module
     decoder_inputs = list()
 
     def get_input_hook(m, x):

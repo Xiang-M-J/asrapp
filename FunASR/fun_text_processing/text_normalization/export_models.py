@@ -16,7 +16,7 @@ def parse_args():
     )
     parser.add_argument(
         "--input_case",
-        help="input capitalization",
+        help="feats capitalization",
         choices=["lower_cased", "cased"],
         default="cased",
         type=str,

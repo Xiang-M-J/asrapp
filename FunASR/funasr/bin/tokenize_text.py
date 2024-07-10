@@ -197,12 +197,12 @@ def get_parser() -> argparse.ArgumentParser:
         help="The verbose level of logging",
     )
 
-    parser.add_argument("--input", "-i", required=True, help="Input text. - indicates sys.stdin")
+    parser.add_argument("--feats", "-i", required=True, help="Input text. - indicates sys.stdin")
     parser.add_argument("--output", "-o", required=True, help="Output text. - indicates sys.stdout")
     parser.add_argument(
         "--field",
         "-f",
-        help="The target columns of the input text as 1-based integer. e.g 2-",
+        help="The target columns of the feats text as 1-based integer. e.g 2-",
     )
     parser.add_argument(
         "--token_type",

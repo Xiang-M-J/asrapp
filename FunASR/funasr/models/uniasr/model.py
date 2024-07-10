@@ -433,7 +433,7 @@ class UniASR(torch.nn.Module):
         batch_size: int = 100,
     ):
         """Compute negative log likelihood(nll) from transformer-decoder
-        To avoid OOM, this fuction seperate the input into batches.
+        To avoid OOM, this fuction seperate the feats into batches.
         Then call nll for each batch and combine and return results.
         Args:
                         encoder_out: (Batch, Length, Dim)

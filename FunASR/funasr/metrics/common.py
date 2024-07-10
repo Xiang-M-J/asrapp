@@ -84,7 +84,7 @@ def label_smoothing_dist(odim, lsm_type, transcript=None, blank=0):
 def get_vgg2l_odim(idim, in_channel=3, out_channel=128):
     """Return the output size of the VGG frontend.
 
-    :param in_channel: input channel size
+    :param in_channel: feats channel size
     :param out_channel: output channel size
     :return: output size
     :rtype int

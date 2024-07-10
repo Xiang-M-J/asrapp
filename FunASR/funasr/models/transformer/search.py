@@ -154,7 +154,7 @@ class BeamSearch(torch.nn.Module):
 
         Args:
             hyp (Hypothesis): Hypothesis with prefix tokens to score
-            x (torch.Tensor): Corresponding input feature
+            x (torch.Tensor): Corresponding feats feature
 
         Returns:
             Tuple[Dict[str, torch.Tensor], Dict[str, Any]]: Tuple of
@@ -178,7 +178,7 @@ class BeamSearch(torch.nn.Module):
         Args:
             hyp (Hypothesis): Hypothesis with prefix tokens to score
             ids (torch.Tensor): 1D tensor of new partial tokens to score
-            x (torch.Tensor): Corresponding input feature
+            x (torch.Tensor): Corresponding feats feature
 
         Returns:
             Tuple[Dict[str, torch.Tensor], Dict[str, Any]]: Tuple of
@@ -353,7 +353,7 @@ class BeamSearch(torch.nn.Module):
         else:
             maxlen = max(1, int(maxlenratio * x.size(0)))
         minlen = int(minlenratio * x.size(0))
-        logging.info("decoder input length: " + str(x.shape[0]))
+        logging.info("decoder feats length: " + str(x.shape[0]))
         logging.info("max output length: " + str(maxlen))
         logging.info("min output length: " + str(minlen))
 

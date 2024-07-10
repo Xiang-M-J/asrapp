@@ -50,7 +50,7 @@ class CTTransformerStreaming(CTTransformer):
 
         """
         x = self.embed(text)
-        # mask = self._target_mask(input)
+        # mask = self._target_mask(feats)
         h, _, _ = self.encoder(x, text_lengths, vad_indexes=vad_indexes)
         y = self.decoder(h)
         return y, None

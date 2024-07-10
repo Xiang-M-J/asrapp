@@ -90,16 +90,16 @@ class AudioLLMQwenAudioDataset(torch.utils.data.Dataset):
         prompt_ids_pre = self.tokenizer.encode(self.prompt_pre)  # [bos,prompt]
         prompt_pre_length = len(prompt_ids_pre)
 
-        # input
+        # feats
         input = self.answer_template.format(target.lower())
         prompt_input = "{}{}".format(self.prompt_pre, input)
-        prompt_input_ids = self.tokenizer.encode(prompt_input)  # [bos, prompt, input]
+        prompt_input_ids = self.tokenizer.encode(prompt_input)  # [bos, prompt, feats]
         # audio_length = len(prompt_input_ids) - prompt_pre_length
-        input_ids = prompt_input_ids + [self.tokenizer.pad_token_id]  # [bos, prompt, input, pad]
+        input_ids = prompt_input_ids + [self.tokenizer.pad_token_id]  # [bos, prompt, feats, pad]
         input_ids_length = len(input_ids)
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)  # [bos, prompt, input, pad]
-        input_ids = torch.cat((audio_pseudo, input_ids))  # [audio, bos, prompt, input, pad]
-        # input_ids[:audio_pseudo_length] = -1 # [-1, bos, prompt, input, pad]
+        input_ids = torch.tensor(input_ids, dtype=torch.int64)  # [bos, prompt, feats, pad]
+        input_ids = torch.cat((audio_pseudo, input_ids))  # [audio, bos, prompt, feats, pad]
+        # input_ids[:audio_pseudo_length] = -1 # [-1, bos, prompt, feats, pad]
         attention_mask = input_ids.ge(-1)  # [true, true, true, true, true], length mask
         # input_ids[prompt_pre_length:] = -1  # [bos, prompt,-1,-1]
         # attention_mask = input_ids.ge(-1)  # [true, true, true, true], length mask
@@ -113,7 +113,7 @@ class AudioLLMQwenAudioDataset(torch.utils.data.Dataset):
         labels_ids = torch.tensor(labels_ids, dtype=torch.int64)  # [bos, prompt, answer, eos]
         labels_ids = torch.cat((audio_pseudo, labels_ids))  # [audio, bos, prompt, answer, eos]
         labels_ids[: audio_pseudo_length + prompt_pre_length] = -1  # [-1, -1, -1, answer, eos]
-        # labels_ids[:prompt_pre_length] = -1  # [-1, -1, input, eos]
+        # labels_ids[:prompt_pre_length] = -1  # [-1, -1, feats, eos]
         label_mask = labels_ids.ge(0)  # [false, false, false, true, true]
         labels_ids[~label_mask] = self.IGNORE_INDEX  # [-100, -100, -100, answer, eos]
 

@@ -567,7 +567,7 @@ class ContextualParaformer(Paraformer):
                     hotword_list_or_file, hotword_str_list
                 )
             )
-        # for text str input
+        # for text str feats
         elif not hotword_list_or_file.endswith(".txt"):
             logging.info("Attempting to parse hotwords as str...")
             hotword_list = []

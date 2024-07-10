@@ -33,7 +33,7 @@ class Encoder_Conformer_Layer(nn.Module):
             `ConvlutionModule` instance can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
@@ -84,8 +84,8 @@ class Encoder_Conformer_Layer(nn.Module):
             x_input (Union[Tuple, torch.Tensor]): Input tensor w/ or w/o pos emb.
                 - w/ pos emb: Tuple of tensors [(#batch, time, size), (1, time, size)].
                 - w/o pos emb: Tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).
@@ -181,7 +181,7 @@ class EncoderLayer(nn.Module):
             `ConvlutionModule` instance can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
@@ -225,8 +225,8 @@ class EncoderLayer(nn.Module):
             x_input (Union[Tuple, torch.Tensor]): Input tensor w/ or w/o pos emb.
                 - w/ pos emb: Tuple of tensors [(#batch, time, size), (1, time, size)].
                 - w/o pos emb: Tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).

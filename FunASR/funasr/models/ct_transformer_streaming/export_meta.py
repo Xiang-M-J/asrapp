@@ -34,12 +34,12 @@ def export_forward(
     """Compute loss value from buffer sequences.
 
     Args:
-        input (torch.Tensor): Input ids. (batch, len)
+        feats (torch.Tensor): Input ids. (batch, len)
         hidden (torch.Tensor): Target ids. (batch, len)
 
     """
     x = self.embed(inputs)
-    # mask = self._target_mask(input)
+    # mask = self._target_mask(feats)
     h, _ = self.encoder(x, text_lengths, vad_indexes, sub_masks)
     y = self.decoder(h)
     return y

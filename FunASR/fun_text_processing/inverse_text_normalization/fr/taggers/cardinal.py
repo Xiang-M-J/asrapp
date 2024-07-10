@@ -115,9 +115,9 @@ class CardinalFst(GraphFst):
             "cents", "00"
         )  # Only used as terminus of hundred sequence. deux cents -> 200, deux cent un -> 201
 
-        graph_digit_no_one = pynini.project(pynini.union("un", "une"), "input")
+        graph_digit_no_one = pynini.project(pynini.union("un", "une"), "feats")
         graph_digit_no_one = (
-            pynini.project(graph_digit, "input") - graph_digit_no_one.arcsort()
+            pynini.project(graph_digit, "feats") - graph_digit_no_one.arcsort()
         ) @ graph_digit
 
         graph_hundreds_component_singular = (
@@ -271,9 +271,9 @@ class CardinalFst(GraphFst):
         self.numbers_up_to_million = numbers_up_to_million
 
         # don't convert cardinals from zero to nine inclusive
-        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "input")
+        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "feats")
 
-        self.graph = (pynini.project(graph, "input") - graph_exception.arcsort()) @ graph
+        self.graph = (pynini.project(graph, "feats") - graph_exception.arcsort()) @ graph
 
         optional_minus_graph = pynini.closure(
             pynutil.insert("negative: ") + pynini.cross("moins", '"-"') + DAMO_SPACE, 0, 1

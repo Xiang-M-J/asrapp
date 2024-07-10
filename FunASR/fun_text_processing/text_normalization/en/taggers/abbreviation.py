@@ -28,7 +28,7 @@ class AbbreviationFst(GraphFst):
         # exclude words that are included in the whitelist
         graph = pynini.compose(
             pynini.difference(
-                pynini.project(graph, "input"), pynini.project(whitelist.graph, "input")
+                pynini.project(graph, "feats"), pynini.project(whitelist.graph, "feats")
             ),
             graph,
         )

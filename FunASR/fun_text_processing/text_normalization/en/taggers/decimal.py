@@ -25,9 +25,9 @@ def get_quantity(
         decimal: decimal FST
         cardinal_up_to_hundred: cardinal FST
     """
-    quantity_wo_thousand = pynini.project(quantities, "input") - pynini.union("k", "K", "thousand")
+    quantity_wo_thousand = pynini.project(quantities, "feats") - pynini.union("k", "K", "thousand")
     if include_abbr:
-        quantity_wo_thousand |= pynini.project(quantities_abbr, "input") - pynini.union(
+        quantity_wo_thousand |= pynini.project(quantities_abbr, "feats") - pynini.union(
             "k", "K", "thousand"
         )
     res = (

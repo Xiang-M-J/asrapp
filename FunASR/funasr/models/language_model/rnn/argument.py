@@ -48,7 +48,7 @@ def add_arguments_rnn_encoder_common(group):
         "--subsample",
         default="1",
         type=str,
-        help="Subsample input frames x_y_z means "
+        help="Subsample feats frames x_y_z means "
         "subsample every x frame at 1st layer, "
         "every y frame at 2nd layer etc.",
     )

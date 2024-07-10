@@ -24,10 +24,10 @@ class ElectronicFst(GraphFst):
         super().__init__(name="electronic", kind="classify", deterministic=deterministic)
 
         accepted_symbols = pynini.project(
-            pynini.string_file(get_abs_path("data/electronic/symbol.tsv")), "input"
+            pynini.string_file(get_abs_path("data/electronic/symbol.tsv")), "feats"
         )
         accepted_common_domains = pynini.project(
-            pynini.string_file(get_abs_path("data/electronic/domain.tsv")), "input"
+            pynini.string_file(get_abs_path("data/electronic/domain.tsv")), "feats"
         )
         all_accepted_symbols = DAMO_ALPHA + pynini.closure(
             DAMO_ALPHA | DAMO_DIGIT | accepted_symbols
@@ -58,7 +58,7 @@ class ElectronicFst(GraphFst):
 
         domain_graph = (
             pynutil.insert('domain: "')
-            + pynini.difference(domain_graph, pynini.project(protocol, "input") + DAMO_SIGMA)
+            + pynini.difference(domain_graph, pynini.project(protocol, "feats") + DAMO_SIGMA)
             + pynutil.insert('"')
         )
         domain_common_graph = (
@@ -71,7 +71,7 @@ class ElectronicFst(GraphFst):
                     0,
                     1,
                 ),
-                pynini.project(protocol, "input") + DAMO_SIGMA,
+                pynini.project(protocol, "feats") + DAMO_SIGMA,
             )
             + pynutil.insert('"')
         )

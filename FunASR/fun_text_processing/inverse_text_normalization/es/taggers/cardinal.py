@@ -170,9 +170,9 @@ class CardinalFst(GraphFst):
         self.numbers_up_to_million = numbers_up_to_million
 
         # don't convert cardinals from zero to nine inclusive
-        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "input")
+        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "feats")
 
-        self.graph = (pynini.project(graph, "input") - graph_exception.arcsort()) @ graph
+        self.graph = (pynini.project(graph, "feats") - graph_exception.arcsort()) @ graph
 
         optional_minus_graph = pynini.closure(
             pynutil.insert("negative: ") + pynini.cross("menos", '"-"') + DAMO_SPACE, 0, 1

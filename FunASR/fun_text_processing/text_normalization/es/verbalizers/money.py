@@ -16,8 +16,8 @@ from pynini.lib import pynutil
 fem = pynini.string_file((get_abs_path("data/money/currency_plural_fem.tsv")))
 masc = pynini.string_file((get_abs_path("data/money/currency_plural_masc.tsv")))
 
-fem_singular = pynini.project(fem, "input")
-masc_singular = pynini.project(masc, "input")
+fem_singular = pynini.project(fem, "feats")
+masc_singular = pynini.project(masc, "feats")
 
 fem_plural = pynini.project(fem, "output")
 masc_plural = pynini.project(masc, "output")

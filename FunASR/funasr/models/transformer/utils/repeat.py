@@ -12,7 +12,7 @@ import torch
 
 
 class MultiSequential(torch.nn.Sequential):
-    """Multi-input multi-output torch.nn.Sequential."""
+    """Multi-feats multi-output torch.nn.Sequential."""
 
     def __init__(self, *args, layer_drop_rate=0.0):
         """Initialize MultiSequential with layer_drop.
@@ -89,7 +89,7 @@ class MultiBlocks(torch.nn.Module):
     ) -> torch.Tensor:
         """Forward each block of the encoder architecture.
         Args:
-            x: MultiBlocks input sequences. (B, T, D_block_1)
+            x: MultiBlocks feats sequences. (B, T, D_block_1)
             pos_enc: Positional embedding sequences.
             mask: Source mask. (B, T)
             chunk_mask: Chunk mask. (T_2, T_2)
@@ -114,7 +114,7 @@ class MultiBlocks(torch.nn.Module):
     ) -> torch.Tensor:
         """Forward each block of the encoder architecture.
         Args:
-            x: MultiBlocks input sequences. (B, T, D_block_1)
+            x: MultiBlocks feats sequences. (B, T, D_block_1)
             pos_enc: Positional embedding sequences. (B, 2 * (T - 1), D_att)
             mask: Source mask. (B, T_2)
             left_context: Number of frames in left context.

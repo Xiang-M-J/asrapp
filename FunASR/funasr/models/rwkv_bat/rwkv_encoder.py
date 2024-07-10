@@ -98,7 +98,7 @@ class RWKVEncoder(torch.nn.Module):
         """Encode source label sequences.
 
         Args:
-            x: Encoder input sequences. (B, L)
+            x: Encoder feats sequences. (B, L)
 
         Returns:
             out: Encoder output sequences. (B, U, D)

@@ -45,14 +45,14 @@ class DepthwiseConv1d(nn.Module):
     When groups == in_channels and out_channels == K * in_channels, where K is a positive integer,
     this operation is termed in literature as depthwise convolution.
     Args:
-        in_channels (int): Number of channels in the input
+        in_channels (int): Number of channels in the feats
         out_channels (int): Number of channels produced by the convolution
         kernel_size (int or tuple): Size of the convolving kernel
         stride (int, optional): Stride of the convolution. Default: 1
-        padding (int or tuple, optional): Zero-padding added to both sides of the input. Default: 0
+        padding (int or tuple, optional): Zero-padding added to both sides of the feats. Default: 0
         bias (bool, optional): If True, adds a learnable bias to the output. Default: True
     Inputs: inputs
-        - **inputs** (batch, in_channels, time): Tensor containing input vector
+        - **inputs** (batch, in_channels, time): Tensor containing feats vector
     Returns: outputs
         - **outputs** (batch, out_channels, time): Tensor produces by depthwise 1-D convolution.
     """
@@ -90,11 +90,11 @@ class ConvModule(nn.Module):
     This is followed by a single 1-D depthwise convolution layer. Batchnorm is  deployed just after the convolution
     to aid training deep models.
     Args:
-        in_channels (int): Number of channels in the input
+        in_channels (int): Number of channels in the feats
         kernel_size (int or tuple, optional): Size of the convolving kernel Default: 31
         dropout_p (float, optional): probability of dropout
     Inputs: inputs
-        inputs (batch, time, dim): Tensor contains input sequences
+        inputs (batch, time, dim): Tensor contains feats sequences
     Outputs: outputs
         outputs (batch, time, dim): Tensor produces by conformer convolution module.
     """

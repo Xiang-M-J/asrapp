@@ -2,7 +2,7 @@
 #  2020, Technische Universität München;  Ludwig Kürzinger
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-"""Sliding Window for raw audio input data."""
+"""Sliding Window for raw audio feats data."""
 
 import torch
 import torch.nn as nn
@@ -18,7 +18,7 @@ class SlidingWindow(nn.Module):
     Known issues:
     Output length is calculated incorrectly if audio shorter than win_length.
     WARNING: trailing values are discarded - padding not implemented yet.
-    There is currently no additional window function applied to input values.
+    There is currently no additional window function applied to feats values.
     """
 
     def __init__(
@@ -33,7 +33,7 @@ class SlidingWindow(nn.Module):
         Args:
             win_length: Length of frame.
             hop_length: Relative starting point of next frame.
-            channels: Number of input channels.
+            channels: Number of feats channels.
             padding: Padding (placeholder, currently not implemented).
             fs:  Sampling rate (placeholder for compatibility, not used).
         """
@@ -47,7 +47,7 @@ class SlidingWindow(nn.Module):
     def forward(
         self, input: torch.Tensor, input_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Apply a sliding window on the input.
+        """Apply a sliding window on the feats.
         Args:
             input: Input (B, T, C*D) or (B, T*C*D), with D=C=1.
             input_lengths: Input lengths within batch.

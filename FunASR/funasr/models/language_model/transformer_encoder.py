@@ -46,12 +46,12 @@ class EncoderLayer(nn.Module):
             can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
         stochastic_depth_rate (float): Proability to skip this layer.
-            During training, the layer may skip residual computation and return input
+            During training, the layer may skip residual computation and return feats
             as-is with given probability.
     """
 
@@ -84,8 +84,8 @@ class EncoderLayer(nn.Module):
 
         Args:
             x_input (torch.Tensor): Input tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).
@@ -161,7 +161,7 @@ class TransformerEncoder_lm(nn.Module):
         pos_enc_class (torch.nn.Module): Positional encoding module class.
             `PositionalEncoding `or `ScaledPositionalEncoding`
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
@@ -383,7 +383,7 @@ class TransformerEncoder_lm(nn.Module):
         return positionwise_layer, positionwise_layer_args
 
     def forward(self, xs, masks):
-        """Encode input sequence.
+        """Encode feats sequence.
 
         Args:
             xs (torch.Tensor): Input tensor (#batch, time, idim).
@@ -431,7 +431,7 @@ class TransformerEncoder_lm(nn.Module):
         return xs, masks
 
     def forward_one_step(self, xs, masks, cache=None):
-        """Encode input frame.
+        """Encode feats frame.
 
         Args:
             xs (torch.Tensor): Input tensor.

@@ -229,7 +229,7 @@ class ESPnetSVModel(FunASRModel):
             if self.normalize is not None:
                 feats, feats_lengths = self.normalize(feats, feats_lengths)
 
-        # Pre-encoder, e.g. used for raw input data
+        # Pre-encoder, e.g. used for raw feats data
         if self.preencoder is not None:
             feats, feats_lengths = self.preencoder(feats, feats_lengths)
 

@@ -199,7 +199,7 @@ class MaskAlongAxis(torch.nn.Module):
 
 
 class MaskAlongAxisVariableMaxWidth(torch.nn.Module):
-    """Mask input spec along a specified axis with variable maximum width.
+    """Mask feats spec along a specified axis with variable maximum width.
 
     Formula:
         max_width = max_width_ratio * seq_len

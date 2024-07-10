@@ -94,9 +94,9 @@ def pyopenjtalk_g2p_kana(text) -> List[str]:
 
 
 def pyopenjtalk_g2p_prosody(text: str, drop_unvoiced_vowels: bool = True) -> List[str]:
-    """Extract phoneme + prosoody symbol sequence from input full-context labels.
+    """Extract phoneme + prosoody symbol sequence from feats full-context labels.
 
-    The algorithm is based on `Prosodic features control by symbols as input of
+    The algorithm is based on `Prosodic features control by symbols as feats of
     sequence-to-sequence acoustic modeling for neural TTS`_ with some r9y9's tweaks.
 
     Args:
@@ -111,7 +111,7 @@ def pyopenjtalk_g2p_prosody(text: str, drop_unvoiced_vowels: bool = True) -> Lis
         >>> pyopenjtalk_g2p_prosody("こんにちは。")
         ['^', 'k', 'o', '[', 'N', 'n', 'i', 'ch', 'i', 'w', 'a', '$']
 
-    .. _`Prosodic features control by symbols as input of sequence-to-sequence acoustic
+    .. _`Prosodic features control by symbols as feats of sequence-to-sequence acoustic
         modeling for neural TTS`: https://doi.org/10.1587/transinf.2020EDP7104
 
     """

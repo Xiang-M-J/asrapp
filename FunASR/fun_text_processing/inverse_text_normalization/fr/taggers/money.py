@@ -47,7 +47,7 @@ class MoneyFst(GraphFst):
         )  # minor denominations to major symbol. (e.g. 5 cents -> 0.05 $ )
 
         accept_all_currency = (convert_currency_major | convert_currency_minor).project(
-            "input"
+            "feats"
         )  # recognizes all currencies
 
         # Graphs for large round amounts ('deux billiards d'euros', 'un milliard de dollars')
@@ -89,7 +89,7 @@ class MoneyFst(GraphFst):
         )
 
         # Rare cases where 'et' will separate major and minor denominations.
-        delete_minor_currency = pynini.project(convert_currency_minor, "input")
+        delete_minor_currency = pynini.project(convert_currency_minor, "feats")
         delete_minor_currency = delete_extra_space + pynutil.delete(delete_minor_currency)
 
         delete_et = delete_extra_space + pynutil.delete("et")

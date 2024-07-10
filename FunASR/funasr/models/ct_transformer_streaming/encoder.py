@@ -61,8 +61,8 @@ class EncoderLayerSANM(torch.nn.Module):
 
         Args:
             x_input (torch.Tensor): Input tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).
@@ -139,8 +139,8 @@ class EncoderLayerSANM(torch.nn.Module):
 
         Args:
             x_input (torch.Tensor): Input tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).
@@ -338,8 +338,8 @@ class SANMVadEncoder(torch.nn.Module):
         """Embed positions in tensor.
 
         Args:
-            xs_pad: input tensor (B, L, D)
-            ilens: input length (B)
+            xs_pad: feats tensor (B, L, D)
+            ilens: feats length (B)
             prev_states: Not to be used now.
         Returns:
             position embedded tensor and mask

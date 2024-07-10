@@ -33,9 +33,9 @@ class CardinalFst(GraphFst):
         zero = pynini.cross(pynini.union("linh", "lẻ"), "0")
 
         optional_ten = pynini.closure(delete_space + graph_ten, 0, 1)
-        last_digit_exception = pynini.project(pynini.cross("năm", "5"), "input")
+        last_digit_exception = pynini.project(pynini.cross("năm", "5"), "feats")
         last_digit = pynini.union(
-            (pynini.project(graph_digit, "input") - last_digit_exception.arcsort()) @ graph_digit,
+            (pynini.project(graph_digit, "feats") - last_digit_exception.arcsort()) @ graph_digit,
             graph_one,
             graph_four,
             graph_five,
@@ -134,11 +134,11 @@ class CardinalFst(GraphFst):
         )
 
         # don't convert cardinals from zero to nine inclusive
-        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "input")
+        graph_exception = pynini.project(pynini.union(graph_digit, graph_zero), "feats")
 
         self.graph_no_exception = graph
 
-        self.graph = (pynini.project(graph, "input") - graph_exception.arcsort()) @ graph
+        self.graph = (pynini.project(graph, "feats") - graph_exception.arcsort()) @ graph
 
         optional_minus_graph = pynini.closure(
             pynutil.insert("negative: ")

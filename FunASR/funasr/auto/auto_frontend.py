@@ -92,7 +92,7 @@ class AutoFrontend:
             else:
                 speech, speech_lengths = speech.numpy(), speech_lengths.numpy()
             batch = {
-                "input": speech,
+                "feats": speech,
                 "input_len": speech_lengths,
                 "key": key_batch,
                 "data_type": "fbank",

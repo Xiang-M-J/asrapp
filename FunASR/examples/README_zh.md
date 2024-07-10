@@ -17,7 +17,7 @@ FunASR开源了大量在工业数据上预训练模型，您可以在 [模型许
 
 命令行方式调用：
 ```shell
-funasr ++model=paraformer-zh ++vad_model="fsmn-vad" ++punc_model="ct-punc" ++input=asr_example_zh.wav
+funasr ++model=paraformer-zh ++vad_model="fsmn-vad" ++punc_model="ct-punc" ++feats=asr_example_zh.wav
 ```
 
 python代码调用（推荐）
@@ -365,7 +365,7 @@ tensorboard --logdir /xxxx/FunASR/examples/industrial_data_pretraining/paraforme
 
 从shell推理
 ```shell
-python -m funasr.bin.inference ++model="./model_dir" ++input=="${input}" ++output_dir="${output_dir}"
+python -m funasr.bin.inference ++model="./model_dir" ++feats=="${feats}" ++output_dir="${output_dir}"
 ```
 从python推理
 
@@ -389,7 +389,7 @@ python -m funasr.bin.inference \
 ++init_param="${init_param}" \
 ++tokenizer_conf.token_list="${tokens}" \
 ++frontend_conf.cmvn_file="${cmvn_file}" \
-++input="${input}" \
+++feats="${feats}" \
 ++output_dir="${output_dir}" \
 ++device="${device}"
 ```

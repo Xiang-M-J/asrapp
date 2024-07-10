@@ -39,7 +39,7 @@ def augment_labels_with_punct_at_end(labels):
     where the value maintains the punctuation
 
     Args:
-        labels : input labels
+        labels : feats labels
     Returns:
         additional labels
     """

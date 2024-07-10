@@ -311,12 +311,12 @@ def mask_by_length(xs, lengths, fill=0):
     """Mask tensor according to length.
 
     Args:
-        xs (Tensor): Batch of input tensor (B, `*`).
+        xs (Tensor): Batch of feats tensor (B, `*`).
         lengths (LongTensor or List): Batch of lengths (B,).
         fill (int or float): Value to fill masked part.
 
     Returns:
-        Tensor: Batch of masked input tensor (B, `*`).
+        Tensor: Batch of masked feats tensor (B, `*`).
 
     Examples:
         >>> x = torch.arange(5).repeat(3, 1) + 1
@@ -421,7 +421,7 @@ def get_subsample(train_args, mode, arch):
         return np.array([1])
 
     elif mode == "mt" and arch == "rnn":
-        # +1 means input (+1) and layers outputs (train_args.elayer)
+        # +1 means feats (+1) and layers outputs (train_args.elayer)
         subsample = np.ones(train_args.elayers + 1, dtype=np.int32)
         logging.warning("Subsampling is not performed for machine translation.")
         logging.info("subsample: " + " ".join([str(x) for x in subsample]))
@@ -561,7 +561,7 @@ class TooShortUttError(Exception):
 
 
 def check_short_utt(sub_factor: int, size: int) -> Tuple[bool, int]:
-    """Check if the input is too short for subsampling.
+    """Check if the feats is too short for subsampling.
 
     Args:
         sub_factor: Subsampling factor for Conv2DSubsampling.

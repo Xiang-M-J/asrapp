@@ -44,12 +44,12 @@ class EncoderLayer(nn.Module):
             can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
         stochastic_depth_rate (float): Proability to skip this layer.
-            During training, the layer may skip residual computation and return input
+            During training, the layer may skip residual computation and return feats
             as-is with given probability.
     """
 
@@ -82,8 +82,8 @@ class EncoderLayer(nn.Module):
 
         Args:
             x_input (torch.Tensor): Input tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).
@@ -141,7 +141,7 @@ class TransformerEncoder(nn.Module):
     """Transformer encoder module.
 
     Args:
-        input_size: input dim
+        input_size: feats dim
         output_size: dimension of attention
         attention_heads: the number of heads of multi head attention
         linear_units: the number of units of position-wise feed forward
@@ -149,10 +149,10 @@ class TransformerEncoder(nn.Module):
         dropout_rate: dropout rate
         attention_dropout_rate: dropout rate in attention
         positional_dropout_rate: dropout rate after adding positional encoding
-        input_layer: input layer type
+        input_layer: feats layer type
         pos_enc_class: PositionalEncoding or ScaledPositionalEncoding
         normalize_before: whether to use layer_norm before the first block
-        concat_after: whether to concat attention layer's input and output
+        concat_after: whether to concat attention layer's feats and output
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied.
@@ -272,8 +272,8 @@ class TransformerEncoder(nn.Module):
         """Embed positions in tensor.
 
         Args:
-            xs_pad: input tensor (B, L, D)
-            ilens: input length (B)
+            xs_pad: feats tensor (B, L, D)
+            ilens: feats length (B)
             prev_states: Not to be used now.
         Returns:
             position embedded tensor and mask

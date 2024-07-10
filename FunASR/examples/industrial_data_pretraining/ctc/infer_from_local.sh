@@ -3,7 +3,7 @@
 
 # method2, inference from local model
 
-# for more input type, please ref to readme.md
+# for more feats type, please ref to readme.md
 model_dir=$1
 input_file=$2
 output_dir=$3

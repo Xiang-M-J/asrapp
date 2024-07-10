@@ -127,9 +127,9 @@ class DateFst(GraphFst):
         month_graph = _get_month_graph()
 
         month_graph = pynutil.insert('month: "') + month_graph + pynutil.insert('"')
-        month_exception = pynini.project(pynini.cross("năm", "5"), "input")
+        month_exception = pynini.project(pynini.cross("năm", "5"), "feats")
         month_graph_exception = (
-            pynini.project(month_graph, "input") - month_exception.arcsort()
+            pynini.project(month_graph, "feats") - month_exception.arcsort()
         ) @ month_graph
 
         day_graph = pynutil.insert('day: "') + cardinal_graph + pynutil.insert('"')

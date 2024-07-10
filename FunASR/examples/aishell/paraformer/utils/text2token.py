@@ -47,7 +47,7 @@ def get_parser():
         type=str,
         help="list of non-linguistic symobles, e.g., <NOISE> etc.",
     )
-    parser.add_argument("text", type=str, default=False, nargs="?", help="input text")
+    parser.add_argument("text", type=str, default=False, nargs="?", help="feats text")
     parser.add_argument(
         "--trans_type",
         "-t",

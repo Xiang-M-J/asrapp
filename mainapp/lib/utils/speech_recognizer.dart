@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:mainapp/tokenizer.dart';
+import 'package:mainapp/utils/tokenizer.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
 class SpeechRecognizer {
@@ -15,11 +15,6 @@ class SpeechRecognizer {
 
   Tokenizer tokenizer = Tokenizer();
   SpeechRecognizer() {
-    OrtEnv.instance.init();
-    OrtEnv.instance.availableProviders().forEach((element) {
-      print('onnx provider=$element');
-    });
-
   }
 
   reset() {
@@ -30,7 +25,6 @@ class SpeechRecognizer {
     _sessionOptions = null;
     _session?.release();
     _session = null;
-    OrtEnv.instance.release();
   }
 
   initModel() async {
@@ -96,7 +90,11 @@ class SpeechRecognizer {
     return out;
   }
 
-  Future<String ?> predict(List<List<double>> data, bool concurrent) async {
+  Future<String?> predictWrapper(List<List<double>> data){
+    return compute(predict, data);
+  }
+
+  String? predict(List<List<double>> data) {
     List<Float32List> data_f = doubleList2FloatList(data);
     final inputOrt = OrtValueTensor.createTensorWithDataList(
         data_f, [_batch, data.length, data[0].length]);

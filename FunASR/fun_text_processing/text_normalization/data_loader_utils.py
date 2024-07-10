@@ -115,7 +115,7 @@ def evaluate(
         preds: predictions
         labels: labels
         input: optional, only needed for verbosity
-        verbose: if true prints [input], golden labels and predictions
+        verbose: if true prints [feats], golden labels and predictions
 
     Returns accuracy
     """
@@ -272,22 +272,22 @@ def write_file(file_path: str, data: List[str]):
 
 def post_process_punct(input: str, normalized_text: str, add_unicode_punct: bool = False):
     """
-    Post-processing of the normalized output to match input in terms of spaces around punctuation marks.
+    Post-processing of the normalized output to match feats in terms of spaces around punctuation marks.
     After NN normalization, Moses detokenization puts a space after
     punctuation marks, and attaches an opening quote "'" to the word to the right.
-    E.g., input to the TN NN model is "12 test' example",
+    E.g., feats to the TN NN model is "12 test' example",
     after normalization and detokenization -> "twelve test 'example" (the quote is considered to be an opening quote,
-    but it doesn't match the input and can cause issues during TTS voice generation.)
-    The current function will match the punctuation and spaces of the normalized text with the input sequence.
-    "12 test' example" -> "twelve test 'example" -> "twelve test' example" (the quote was shifted to match the input).
+    but it doesn't match the feats and can cause issues during TTS voice generation.)
+    The current function will match the punctuation and spaces of the normalized text with the feats sequence.
+    "12 test' example" -> "twelve test 'example" -> "twelve test' example" (the quote was shifted to match the feats).
 
     Args:
-        input: input text (original input to the NN, before normalization or tokenization)
+        input: feats text (original feats to the NN, before normalization or tokenization)
         normalized_text: output text (output of the TN NN model)
         add_unicode_punct: set to True to handle unicode punctuation marks as well as default string.punctuation (increases post processing time)
     """
     # in the post-processing WFST graph "``" are repalced with '"" quotes (otherwise single quotes "`" won't be handled correctly)
-    # this function fixes spaces around them based on input sequence, so here we're making the same double quote replacement
+    # this function fixes spaces around them based on feats sequence, so here we're making the same double quote replacement
     # to make sure these new double quotes work with this function
     if "``" in input and "``" not in normalized_text:
         input = input.replace("``", '"')

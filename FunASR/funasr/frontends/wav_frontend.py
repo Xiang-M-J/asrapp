@@ -407,7 +407,7 @@ class WavFrontendOnline(nn.Module):
         return feats_pad, feats_lens, lfr_splice_frame_idxs
 
     def forward(self, input: torch.Tensor, input_lengths: torch.Tensor, **kwargs):
-        is_final = kwargs.get("is_final", False)
+        is_final = kwargs.get("is_final", False)  # True
         cache = kwargs.get("cache", {})
         if len(cache) == 0:
             self.init_cache(cache)
@@ -419,7 +419,7 @@ class WavFrontendOnline(nn.Module):
 
         waveforms, feats, feats_lengths = self.forward_fbank(
             input, input_lengths, cache=cache
-        )  # input shape: B T D
+        )  # feats shape: B T D
 
         if feats.shape[0]:
 
@@ -430,7 +430,7 @@ class WavFrontendOnline(nn.Module):
                     cache["lfr_splice_cache"].append(
                         feats[i][0, :].unsqueeze(dim=0).repeat((self.lfr_m - 1) // 2, 1)
                     )
-            # need the number of the input frames + self.lfr_splice_cache[0].shape[0] is greater than self.lfr_m
+            # need the number of the feats frames + self.lfr_splice_cache[0].shape[0] is greater than self.lfr_m
             if feats_lengths[0] + cache["lfr_splice_cache"][0].shape[0] >= self.lfr_m:
                 lfr_splice_cache_tensor = torch.stack(cache["lfr_splice_cache"])  # B T D
                 feats = torch.cat((lfr_splice_cache_tensor, feats), dim=1)

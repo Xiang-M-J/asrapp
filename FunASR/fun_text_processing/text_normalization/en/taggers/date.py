@@ -271,7 +271,7 @@ class DateFst(GraphFst):
             )
 
         graph_dmy = day_graph + delete_extra_space + month_graph + optional_graph_year
-        day_ex_month = (DAMO_DIGIT**2 - pynini.project(month_numbers_graph, "input")) @ day_graph
+        day_ex_month = (DAMO_DIGIT**2 - pynini.project(month_numbers_graph, "feats")) @ day_graph
         for x in ["-", "/", "."]:
             delete_sep = pynutil.delete(x)
             graph_dmy |= (

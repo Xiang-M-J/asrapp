@@ -26,7 +26,7 @@ class MultiLayeredConv1d(torch.nn.Module):
         """Initialize MultiLayeredConv1d module.
 
         Args:
-            in_chans (int): Number of input channels.
+            in_chans (int): Number of feats channels.
             hidden_chans (int): Number of hidden channels.
             kernel_size (int): Kernel size of conv1d.
             dropout_rate (float): Dropout rate.
@@ -53,7 +53,7 @@ class MultiLayeredConv1d(torch.nn.Module):
         """Calculate forward propagation.
 
         Args:
-            x (torch.Tensor): Batch of input tensors (B, T, in_chans).
+            x (torch.Tensor): Batch of feats tensors (B, T, in_chans).
 
         Returns:
             torch.Tensor: Batch of output tensors (B, T, hidden_chans).
@@ -75,7 +75,7 @@ class FsmnFeedForward(torch.nn.Module):
         """Initialize FsmnFeedForward module.
 
         Args:
-            in_chans (int): Number of input channels.
+            in_chans (int): Number of feats channels.
             hidden_chans (int): Number of hidden channels.
             out_chans (int): Number of output channels.
             kernel_size (int): Kernel size of conv1d.
@@ -105,7 +105,7 @@ class FsmnFeedForward(torch.nn.Module):
         """Calculate forward propagation.
 
         Args:
-            x (torch.Tensor): Batch of input tensors (B, T, in_chans).
+            x (torch.Tensor): Batch of feats tensors (B, T, in_chans).
 
         Returns:
             torch.Tensor: Batch of output tensors (B, T, out_chans).
@@ -126,7 +126,7 @@ class Conv1dLinear(torch.nn.Module):
         """Initialize Conv1dLinear module.
 
         Args:
-            in_chans (int): Number of input channels.
+            in_chans (int): Number of feats channels.
             hidden_chans (int): Number of hidden channels.
             kernel_size (int): Kernel size of conv1d.
             dropout_rate (float): Dropout rate.
@@ -147,7 +147,7 @@ class Conv1dLinear(torch.nn.Module):
         """Calculate forward propagation.
 
         Args:
-            x (torch.Tensor): Batch of input tensors (B, T, in_chans).
+            x (torch.Tensor): Batch of feats tensors (B, T, in_chans).
 
         Returns:
             torch.Tensor: Batch of output tensors (B, T, hidden_chans).

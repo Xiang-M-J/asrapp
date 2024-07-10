@@ -408,7 +408,7 @@ def num2chn(
         dec_string = int_dec[1]
     else:
         raise ValueError(
-            "invalid input num string with more than one dot: {}".format(number_string)
+            "invalid feats num string with more than one dot: {}".format(number_string)
         )
 
     if use_units and len(int_string) > 1:
@@ -834,12 +834,12 @@ if __name__ == "__main__":
     # nsw_test()
 
     p = argparse.ArgumentParser()
-    p.add_argument("ifile", help="input filename, assume utf-8 encoding")
+    p.add_argument("ifile", help="feats filename, assume utf-8 encoding")
     p.add_argument("ofile", help="output filename")
     p.add_argument("--to_upper", action="store_true", help="convert to upper case")
     p.add_argument("--to_lower", action="store_true", help="convert to lower case")
     p.add_argument(
-        "--has_key", action="store_true", help="input text has Kaldi's key as first field."
+        "--has_key", action="store_true", help="feats text has Kaldi's key as first field."
     )
     p.add_argument(
         "--remove_fillers", type=bool, default=True, help='remove filler chars such as "呃, 啊"'

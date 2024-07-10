@@ -133,10 +133,10 @@ class InverseNormalizer(Normalizer):
         NeMo inverse text normalizer
 
         Args:
-            texts: list of input strings
+            texts: list of feats strings
             verbose: whether to print intermediate meta information
 
-        Returns converted list of input strings
+        Returns converted list of feats strings
         """
         # print(texts)
         return self.normalize_list(texts=texts, verbose=verbose)
@@ -169,8 +169,8 @@ def str2bool(s, default=False):
 def parse_args():
     parser = ArgumentParser()
     input = parser.add_mutually_exclusive_group()
-    input.add_argument("--text", dest="input_string", help="input string", type=str)
-    input.add_argument("--input_file", dest="input_file", help="input file path", type=str)
+    input.add_argument("--text", dest="input_string", help="feats string", type=str)
+    input.add_argument("--input_file", dest="input_file", help="feats file path", type=str)
     parser.add_argument("--output_file", dest="output_file", help="output file path", type=str)
     parser.add_argument(
         "--language",

@@ -25,7 +25,7 @@ class ConvolutionalSpatialGatingUnit(torch.nn.Module):
     ):
         super().__init__()
 
-        n_channels = size // 2  # split input channels
+        n_channels = size // 2  # split feats channels
         self.norm = LayerNorm(n_channels)
         self.conv = torch.nn.Conv1d(
             n_channels,

@@ -137,12 +137,12 @@ class EncoderLayer(nn.Module):
             `ConvlutionModule` instance can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
         stochastic_depth_rate (float): Proability to skip this layer.
-            During training, the layer may skip residual computation and return input
+            During training, the layer may skip residual computation and return feats
             as-is with given probability.
     """
 
@@ -189,8 +189,8 @@ class EncoderLayer(nn.Module):
             x_input (Union[Tuple, torch.Tensor]): Input tensor w/ or w/o pos emb.
                 - w/ pos emb: Tuple of tensors [(#batch, time, size), (1, time, size)].
                 - w/o pos emb: Tensor (#batch, time, size).
-            mask (torch.Tensor): Mask tensor for the input (#batch, time).
-            cache (torch.Tensor): Cache tensor of the input (#batch, time - 1, size).
+            mask (torch.Tensor): Mask tensor for the feats (#batch, time).
+            cache (torch.Tensor): Cache tensor of the feats (#batch, time - 1, size).
 
         Returns:
             torch.Tensor: Output tensor (#batch, time, size).
@@ -298,7 +298,7 @@ class ConformerEncoder(nn.Module):
         positional_dropout_rate (float): Dropout rate after adding positional encoding.
         input_layer (Union[str, torch.nn.Module]): Input layer type.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             If True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             If False, no additional linear will be applied. i.e. x -> x + att(x)
@@ -673,8 +673,8 @@ class CausalConvolution(torch.nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute convolution module.
         Args:
-            x: ConformerConvolution input sequences. (B, T, D_hidden)
-            cache: ConformerConvolution input cache. (1, conv_kernel, D_hidden)
+            x: ConformerConvolution feats sequences. (B, T, D_hidden)
+            cache: ConformerConvolution feats cache. (1, conv_kernel, D_hidden)
             right_context: Number of frames in right context.
         Returns:
             x: ConformerConvolution output sequences. (B, T, D_hidden)
@@ -777,9 +777,9 @@ class ChunkEncoderLayer(torch.nn.Module):
         mask: torch.Tensor,
         chunk_mask: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Encode input sequences.
+        """Encode feats sequences.
         Args:
-            x: Conformer input sequences. (B, T, D_block)
+            x: Conformer feats sequences. (B, T, D_block)
             pos_enc: Positional embedding sequences. (B, 2 * (T - 1), D_block)
             mask: Source mask. (B, T)
             chunk_mask: Chunk mask. (T_2, T_2)
@@ -829,9 +829,9 @@ class ChunkEncoderLayer(torch.nn.Module):
         left_context: int = 0,
         right_context: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Encode chunk of input sequence.
+        """Encode chunk of feats sequence.
         Args:
-            x: Conformer input sequences. (B, T, D_block)
+            x: Conformer feats sequences. (B, T, D_block)
             pos_enc: Positional embedding sequences. (B, 2 * (T - 1), D_block)
             mask: Source mask. (B, T_2)
             left_context: Number of frames in left context.
@@ -887,7 +887,7 @@ class ConformerChunkEncoder(torch.nn.Module):
     Args:
         input_size: Input size.
         body_conf: Encoder body configuration.
-        input_conf: Encoder input configuration.
+        input_conf: Encoder feats configuration.
         main_conf: Encoder main configuration.
     """
 
@@ -1040,10 +1040,10 @@ class ConformerChunkEncoder(torch.nn.Module):
         x: torch.Tensor,
         x_len: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Encode input sequences.
+        """Encode feats sequences.
         Args:
-            x: Encoder input features. (B, T_in, F)
-            x_len: Encoder input features lengths. (B,)
+            x: Encoder feats features. (B, T_in, F)
+            x_len: Encoder feats features lengths. (B,)
         Returns:
            x: Encoder outputs. (B, T_out, D_enc)
            x_len: Encoder outputs lenghts. (B,)
@@ -1141,10 +1141,10 @@ class ConformerChunkEncoder(torch.nn.Module):
         x: torch.Tensor,
         x_len: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Encode input sequences.
+        """Encode feats sequences.
         Args:
-            x: Encoder input features. (B, T_in, F)
-            x_len: Encoder input features lengths. (B,)
+            x: Encoder feats features. (B, T_in, F)
+            x_len: Encoder feats features lengths. (B,)
         Returns:
            x: Encoder outputs. (B, T_out, D_enc)
            x_len: Encoder outputs lenghts. (B,)
@@ -1223,10 +1223,10 @@ class ConformerChunkEncoder(torch.nn.Module):
         left_context: int = 32,
         right_context: int = 0,
     ) -> torch.Tensor:
-        """Encode input sequences as chunks.
+        """Encode feats sequences as chunks.
         Args:
-            x: Encoder input features. (1, T_in, F)
-            x_len: Encoder input features lengths. (1,)
+            x: Encoder feats features. (1, T_in, F)
+            x_len: Encoder feats features lengths. (1,)
             processed_frames: Number of frames already seen.
             left_context: Number of frames in left context.
             right_context: Number of frames in right context.

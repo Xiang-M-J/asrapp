@@ -64,7 +64,7 @@ class FeedForward(torch.nn.Module):
         """Compute channel mixing.
 
         Args:
-            x: FeedForward input sequences. (B, U, size)
+            x: FeedForward feats sequences. (B, U, size)
             state: Decoder hidden state. [5 x (B, 1, size, N)]
 
         Returns:

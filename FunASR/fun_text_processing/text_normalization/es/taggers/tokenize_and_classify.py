@@ -33,7 +33,7 @@ class ClassifyFst(GraphFst):
     More details to deployment at NeMo/tools/text_processing_deployment.
 
     Args:
-        input_case: accepting either "lower_cased" or "cased" input.
+        input_case: accepting either "lower_cased" or "cased" feats.
         deterministic: if True will provide a single transduction option,
             for False multiple options (used for audio-based normalization)
         cache_dir: path to a dir with .far grammar file. Set to None to avoid using cache.

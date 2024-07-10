@@ -62,7 +62,7 @@ class RWKV(torch.nn.Module):
         """Compute receptance weighted key value.
 
         Args:
-            x: RWKV input sequences. (B, L, size)
+            x: RWKV feats sequences. (B, L, size)
             state: Decoder hidden states. [5 x (B, D_att/size, N)]
 
         Returns:
@@ -128,7 +128,7 @@ class RWKVDecoderLayer(torch.nn.Module):
         """Compute receptance weighted key value.
 
         Args:
-            x: RWKV input sequences. (B, L, size)
+            x: RWKV feats sequences. (B, L, size)
             state: Decoder hidden states. [5 x (B, D_att/size, N)]
 
         Returns:

@@ -28,7 +28,7 @@ def export_forward(self, inputs: torch.Tensor, text_lengths: torch.Tensor):
     """Compute loss value from buffer sequences.
 
     Args:
-        input (torch.Tensor): Input ids. (batch, len)
+        feats (torch.Tensor): Input ids. (batch, len)
         hidden (torch.Tensor): Target ids. (batch, len)
 
     """

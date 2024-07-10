@@ -45,7 +45,7 @@ class GlobalLayerNorm(nn.Module):
     Arguments
     ---------
        dim : (int or list or torch.Size)
-           Input shape from an expected input of size.
+           Input shape from an expected feats of size.
        eps : float
            A value added to the denominator for numerical stability.
        elementwise_affine : bool

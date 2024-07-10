@@ -100,7 +100,7 @@ class SerialFst(GraphFst):
 
         # exclude ordinal numbers from serial options
         serial_graph = pynini.compose(
-            pynini.difference(DAMO_SIGMA, pynini.project(ordinal.graph, "input")), serial_graph
+            pynini.difference(DAMO_SIGMA, pynini.project(ordinal.graph, "feats")), serial_graph
         ).optimize()
 
         serial_graph = pynutil.add_weight(serial_graph, 0.0001)

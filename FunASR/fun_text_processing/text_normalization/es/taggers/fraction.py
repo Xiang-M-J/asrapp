@@ -98,7 +98,7 @@ class FractionFst(GraphFst):
             multiples_of_thousand | graph_hundreds | graph_higher_powers_of_ten
         )
         block_higher_powers_of_ten = pynutil.delete(
-            pynini.project(graph_higher_powers_of_ten, "input")
+            pynini.project(graph_higher_powers_of_ten, "feats")
         )  # For cardinal graph
 
         graph_fractions_ordinals = graph_higher_powers_of_ten | graph_three_to_ten

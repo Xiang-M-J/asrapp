@@ -40,20 +40,20 @@ class CTTransformer(torch.nn.Module):
     """
 
     def __init__(
-        self,
-        encoder: str = None,
-        encoder_conf: dict = None,
-        vocab_size: int = -1,
-        punc_list: list = None,
-        punc_weight: list = None,
-        embed_unit: int = 128,
-        att_unit: int = 256,
-        dropout_rate: float = 0.5,
-        ignore_id: int = -1,
-        sos: int = 1,
-        eos: int = 2,
-        sentence_end_id: int = 3,
-        **kwargs,
+            self,
+            encoder: str = None,
+            encoder_conf: dict = None,
+            vocab_size: int = -1,
+            punc_list: list = None,
+            punc_weight: list = None,
+            embed_unit: int = 128,
+            att_unit: int = 256,
+            dropout_rate: float = 0.5,
+            ignore_id: int = -1,
+            sos: int = 1,
+            eos: int = 2,
+            sentence_end_id: int = 3,
+            **kwargs,
     ):
         super().__init__()
 
@@ -87,7 +87,7 @@ class CTTransformer(torch.nn.Module):
 
         """
         x = self.embed(text)
-        # mask = self._target_mask(input)
+        # mask = self._target_mask(feats)
         h, _, _ = self.encoder(x, text_lengths)
         y = self.decoder(h)
         return y, None
@@ -118,7 +118,7 @@ class CTTransformer(torch.nn.Module):
         return logp, cache
 
     def batch_score(
-        self, ys: torch.Tensor, states: List[Any], xs: torch.Tensor
+            self, ys: torch.Tensor, states: List[Any], xs: torch.Tensor
     ) -> Tuple[torch.Tensor, List[Any]]:
         """Score new token batch.
 
@@ -157,14 +157,14 @@ class CTTransformer(torch.nn.Module):
         return logp, state_list
 
     def nll(
-        self,
-        text: torch.Tensor,
-        punc: torch.Tensor,
-        text_lengths: torch.Tensor,
-        punc_lengths: torch.Tensor,
-        max_length: Optional[int] = None,
-        vad_indexes: Optional[torch.Tensor] = None,
-        vad_indexes_lengths: Optional[torch.Tensor] = None,
+            self,
+            text: torch.Tensor,
+            punc: torch.Tensor,
+            text_lengths: torch.Tensor,
+            punc_lengths: torch.Tensor,
+            max_length: Optional[int] = None,
+            vad_indexes: Optional[torch.Tensor] = None,
+            vad_indexes_lengths: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute negative log likelihood(nll)
 
@@ -227,13 +227,13 @@ class CTTransformer(torch.nn.Module):
         return nll, text_lengths
 
     def forward(
-        self,
-        text: torch.Tensor,
-        punc: torch.Tensor,
-        text_lengths: torch.Tensor,
-        punc_lengths: torch.Tensor,
-        vad_indexes: Optional[torch.Tensor] = None,
-        vad_indexes_lengths: Optional[torch.Tensor] = None,
+            self,
+            text: torch.Tensor,
+            punc: torch.Tensor,
+            text_lengths: torch.Tensor,
+            punc_lengths: torch.Tensor,
+            vad_indexes: Optional[torch.Tensor] = None,
+            vad_indexes_lengths: Optional[torch.Tensor] = None,
     ):
         nll, y_lengths = self.nll(text, punc, text_lengths, punc_lengths, vad_indexes=vad_indexes)
         ntokens = y_lengths.sum()
@@ -245,13 +245,13 @@ class CTTransformer(torch.nn.Module):
         return loss, stats, weight
 
     def inference(
-        self,
-        data_in,
-        data_lengths=None,
-        key: list = None,
-        tokenizer=None,
-        frontend=None,
-        **kwargs,
+            self,
+            data_in,
+            data_lengths=None,
+            key: list = None,
+            tokenizer=None,
+            frontend=None,
+            **kwargs,
     ):
         assert len(data_in) == 1
         text = load_audio_text_image_video(data_in, data_type=kwargs.get("kwargs", "text"))[0]
@@ -296,8 +296,8 @@ class CTTransformer(torch.nn.Module):
                 last_comma_index = -1
                 for i in range(len(punctuations) - 2, 1, -1):
                     if (
-                        self.punc_list[punctuations[i]] == "。"
-                        or self.punc_list[punctuations[i]] == "？"
+                            self.punc_list[punctuations[i]] == "。"
+                            or self.punc_list[punctuations[i]] == "？"
                     ):
                         sentenceEnd = i
                         break
@@ -305,17 +305,17 @@ class CTTransformer(torch.nn.Module):
                         last_comma_index = i
 
                 if (
-                    sentenceEnd < 0
-                    and len(mini_sentence) > cache_pop_trigger_limit
-                    and last_comma_index >= 0
+                        sentenceEnd < 0
+                        and len(mini_sentence) > cache_pop_trigger_limit
+                        and last_comma_index >= 0
                 ):
                     # The sentence it too long, cut off at a comma.
                     sentenceEnd = last_comma_index
                     punctuations[sentenceEnd] = self.sentence_end_id
-                cache_sent = mini_sentence[sentenceEnd + 1 :]
-                cache_sent_id = mini_sentence_id[sentenceEnd + 1 :]
-                mini_sentence = mini_sentence[0 : sentenceEnd + 1]
-                punctuations = punctuations[0 : sentenceEnd + 1]
+                cache_sent = mini_sentence[sentenceEnd + 1:]
+                cache_sent_id = mini_sentence_id[sentenceEnd + 1:]
+                mini_sentence = mini_sentence[0: sentenceEnd + 1]
+                punctuations = punctuations[0: sentenceEnd + 1]
 
             # if len(punctuations) == 0:
             #    continue
@@ -325,9 +325,9 @@ class CTTransformer(torch.nn.Module):
             words_with_punc = []
             for i in range(len(mini_sentence)):
                 if (
-                    i == 0
-                    or self.punc_list[punctuations[i - 1]] == "。"
-                    or self.punc_list[punctuations[i - 1]] == "？"
+                        i == 0
+                        or self.punc_list[punctuations[i - 1]] == "。"
+                        or self.punc_list[punctuations[i - 1]] == "？"
                 ) and len(mini_sentence[i][0].encode()) == 1:
                     mini_sentence[i] = mini_sentence[i].capitalize()
                 if i == 0:
@@ -335,8 +335,8 @@ class CTTransformer(torch.nn.Module):
                         mini_sentence[i] = " " + mini_sentence[i]
                 if i > 0:
                     if (
-                        len(mini_sentence[i][0].encode()) == 1
-                        and len(mini_sentence[i - 1][0].encode()) == 1
+                            len(mini_sentence[i][0].encode()) == 1
+                            and len(mini_sentence[i - 1][0].encode()) == 1
                     ):
                         mini_sentence[i] = " " + mini_sentence[i]
                 words_with_punc.append(mini_sentence[i])
@@ -366,9 +366,9 @@ class CTTransformer(torch.nn.Module):
                         self.sentence_end_id
                     ]
                 elif (
-                    new_mini_sentence[-1] != "。"
-                    and new_mini_sentence[-1] != "？"
-                    and len(new_mini_sentence[-1].encode()) != 1
+                        new_mini_sentence[-1] != "。"
+                        and new_mini_sentence[-1] != "？"
+                        and len(new_mini_sentence[-1].encode()) != 1
                 ):
                     new_mini_sentence_out = new_mini_sentence + "。"
                     new_mini_sentence_punc_out = new_mini_sentence_punc[:-1] + [
@@ -377,9 +377,9 @@ class CTTransformer(torch.nn.Module):
                     if len(punctuations):
                         punctuations[-1] = 2
                 elif (
-                    new_mini_sentence[-1] != "."
-                    and new_mini_sentence[-1] != "?"
-                    and len(new_mini_sentence[-1].encode()) == 1
+                        new_mini_sentence[-1] != "."
+                        and new_mini_sentence[-1] != "?"
+                        and len(new_mini_sentence[-1].encode()) == 1
                 ):
                     new_mini_sentence_out = new_mini_sentence + "."
                     new_mini_sentence_punc_out = new_mini_sentence_punc[:-1] + [

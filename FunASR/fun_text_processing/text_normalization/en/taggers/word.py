@@ -29,7 +29,7 @@ class WordFst(GraphFst):
         super().__init__(name="word", kind="classify", deterministic=deterministic)
 
         punct = PunctuationFst().graph
-        default_graph = pynini.closure(pynini.difference(DAMO_NOT_SPACE, punct.project("input")), 1)
+        default_graph = pynini.closure(pynini.difference(DAMO_NOT_SPACE, punct.project("feats")), 1)
         symbols_to_exclude = (
             pynini.union("$", "€", "₩", "£", "¥", "#", "%") | DAMO_DIGIT
         ).optimize()

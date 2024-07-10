@@ -25,7 +25,7 @@ print(res)
 # choose english paraformer model first
 # iic/speech_paraformer_asr-en-16k-vocab4199-pytorch
 res = model.generate(
-    input="https://isv-data.oss-cn-hangzhou.aliyuncs.com/ics/MaaS/ASR/test_audio/asr_example_en.wav",
+    feats="https://isv-data.oss-cn-hangzhou.aliyuncs.com/ics/MaaS/ASR/test_audio/asr_example_en.wav",
     cache={},
     pred_timestamp=True,
     return_raw_text=True,
@@ -39,7 +39,7 @@ from funasr import AutoFrontend
 
 frontend = AutoFrontend(model="iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch")
 
-fbanks = frontend(input="https://isv-data.oss-cn-hangzhou.aliyuncs.com/ics/MaaS/ASR/test_audio/asr_example_zh.wav", batch_size=2)
+fbanks = frontend(feats="https://isv-data.oss-cn-hangzhou.aliyuncs.com/ics/MaaS/ASR/test_audio/asr_example_zh.wav", batch_size=2)
 
 for batch_idx, fbank_dict in enumerate(fbanks):
     res = model.generate(**fbank_dict)

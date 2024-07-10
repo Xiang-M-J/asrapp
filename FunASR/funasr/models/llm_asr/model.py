@@ -193,7 +193,7 @@ class LLMASR(nn.Module):
         if audio_mask is not None:
             batch_size, token_num, dims = inputs_embeds.shape
             _, l, _ = encoder_out.shape
-            # [audio, bos, prompt, input, pad]
+            # [audio, bos, prompt, feats, pad]
             encoder_outs_pad = F.pad(encoder_out, (0, 0, 0, token_num - l, 0, 0), value=0.0)
             inputs_embeds = encoder_outs_pad * audio_mask[:, :, None] + inputs_embeds * (
                 1.0 - audio_mask[:, :, None]

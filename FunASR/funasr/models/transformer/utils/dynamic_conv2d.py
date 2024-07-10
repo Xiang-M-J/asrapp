@@ -69,7 +69,7 @@ class DynamicConvolution2D(nn.Module):
         This is just for compatibility with self-attention layer (attention.py)
 
         Args:
-            query (torch.Tensor): (batch, time1, d_model) input tensor
+            query (torch.Tensor): (batch, time1, d_model) feats tensor
             key (torch.Tensor): (batch, time2, d_model) NOT USED
             value (torch.Tensor): (batch, time2, d_model) NOT USED
             mask (torch.Tensor): (batch, time1, time2) mask

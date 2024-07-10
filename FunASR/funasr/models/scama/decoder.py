@@ -39,7 +39,7 @@ class DecoderLayerSANM(nn.Module):
             can be used as the argument.
         dropout_rate (float): Dropout rate.
         normalize_before (bool): Whether to use layer_norm before the first block.
-        concat_after (bool): Whether to concat attention layer's input and output.
+        concat_after (bool): Whether to concat attention layer's feats and output.
             if True, additional linear will be applied.
             i.e. x -> x + linear(concat(x, att(x)))
             if False, no additional linear will be applied. i.e. x -> x + att(x)
@@ -80,7 +80,7 @@ class DecoderLayerSANM(nn.Module):
 
         Args:
             tgt (torch.Tensor): Input tensor (#batch, maxlen_out, size).
-            tgt_mask (torch.Tensor): Mask for input tensor (#batch, maxlen_out).
+            tgt_mask (torch.Tensor): Mask for feats tensor (#batch, maxlen_out).
             memory (torch.Tensor): Encoded memory, float32 (#batch, maxlen_in, size).
             memory_mask (torch.Tensor): Encoded memory mask (#batch, maxlen_in).
             cache (List[torch.Tensor]): List of cached tensors.
@@ -120,7 +120,7 @@ class DecoderLayerSANM(nn.Module):
 
         Args:
             tgt (torch.Tensor): Input tensor (#batch, maxlen_out, size).
-            tgt_mask (torch.Tensor): Mask for input tensor (#batch, maxlen_out).
+            tgt_mask (torch.Tensor): Mask for feats tensor (#batch, maxlen_out).
             memory (torch.Tensor): Encoded memory, float32 (#batch, maxlen_in, size).
             memory_mask (torch.Tensor): Encoded memory mask (#batch, maxlen_in).
             cache (List[torch.Tensor]): List of cached tensors.
@@ -164,7 +164,7 @@ class DecoderLayerSANM(nn.Module):
 
         Args:
             tgt (torch.Tensor): Input tensor (#batch, maxlen_out, size).
-            tgt_mask (torch.Tensor): Mask for input tensor (#batch, maxlen_out).
+            tgt_mask (torch.Tensor): Mask for feats tensor (#batch, maxlen_out).
             memory (torch.Tensor): Encoded memory, float32 (#batch, maxlen_in, size).
             memory_mask (torch.Tensor): Encoded memory mask (#batch, maxlen_in).
             cache (List[torch.Tensor]): List of cached tensors.
@@ -365,9 +365,9 @@ class FsmnDecoderSCAMAOpt(BaseTransformerDecoder):
             hs_pad: encoded memory, float32  (batch, maxlen_in, feat)
             hlens: (batch)
             ys_in_pad:
-                input token ids, int64 (batch, maxlen_out)
+                feats token ids, int64 (batch, maxlen_out)
                 if input_layer == "embed"
-                input tensor (batch, maxlen_out, #mels) in the other cases
+                feats tensor (batch, maxlen_out, #mels) in the other cases
             ys_in_lens: (batch)
         Returns:
             (tuple): tuple containing:
@@ -438,8 +438,8 @@ class FsmnDecoderSCAMAOpt(BaseTransformerDecoder):
         """Forward one step.
 
         Args:
-            tgt: input token ids, int64 (batch, maxlen_out)
-            tgt_mask: input token mask,  (batch, maxlen_out)
+            tgt: feats token ids, int64 (batch, maxlen_out)
+            tgt_mask: feats token mask,  (batch, maxlen_out)
                       dtype=torch.uint8 in PyTorch 1.2-
                       dtype=torch.bool in PyTorch 1.2+ (include 1.2)
             memory: encoded memory, float32  (batch, maxlen_in, feat)

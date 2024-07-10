@@ -36,7 +36,7 @@ class Normalizer:
     Useful for TTS preprocessing.
 
     Args:
-        input_case: expected input capitalization
+        input_case: expected feats capitalization
         lang: language specifying the TN rules, by default: English
         cache_dir: path to a dir with .far grammar file. Set to None to avoid using cache.
         overwrite_cache: set to True to overwrite .far files
@@ -151,7 +151,7 @@ class Normalizer:
         NeMo text normalizer
 
         Args:
-            texts: list of input strings
+            texts: list of feats strings
             verbose: whether to print intermediate meta information
             punct_pre_process: whether to do punctuation pre processing
             punct_post_process: whether to do punctuation post processing
@@ -160,7 +160,7 @@ class Normalizer:
                 (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but one are used.
             batch_size: Number of examples for each process
 
-        Returns converted list input strings
+        Returns converted list feats strings
         """
 
         # to save intermediate results to a file
@@ -233,12 +233,12 @@ class Normalizer:
 
         Date tokens contain 3 items each which gives 6 permutations for every date. Since there are 2 dates, total
         number of permutations would be ``6 * 6 == 36``. Parameter ``max_number_of_permutations_per_split`` equals 6,
-        so input sequence of tokens is split into 2 smaller sequences.
+        so feats sequence of tokens is split into 2 smaller sequences.
 
         Args:
             tokens (:obj:`List[dict]`): a list of dictionaries, possibly nested.
             max_number_of_permutations_per_split (:obj:`int`, `optional`, defaults to :obj:`243`): a maximum number
-                of permutations which can be generated from input sequence of tokens.
+                of permutations which can be generated from feats sequence of tokens.
 
         Returns:
             :obj:`List[List[dict]]`: a list of smaller sequences of tokens resulting from ``tokens`` split.
@@ -287,8 +287,8 @@ class Normalizer:
         """
         if len(text.split()) > 500:
             print(
-                "WARNING! Your input is too long and could take a long time to normalize."
-                "Use split_text_into_sentences() to make the input shorter and then call normalize_list()."
+                "WARNING! Your feats is too long and could take a long time to normalize."
+                "Use split_text_into_sentences() to make the feats shorter and then call normalize_list()."
             )
 
         original_text = text
@@ -447,7 +447,7 @@ class Normalizer:
         This is context-independent.
 
         Args:
-            tagged_text: input text
+            tagged_text: feats text
 
         Returns: verbalized lattice
         """
@@ -490,15 +490,15 @@ class Normalizer:
 def parse_args():
     parser = ArgumentParser()
     input = parser.add_mutually_exclusive_group()
-    input.add_argument("--text", dest="input_string", help="input string", type=str)
-    input.add_argument("--input_file", dest="input_file", help="input file path", type=str)
+    input.add_argument("--text", dest="input_string", help="feats string", type=str)
+    input.add_argument("--input_file", dest="input_file", help="feats file path", type=str)
     parser.add_argument("--output_file", dest="output_file", help="output file path", type=str)
     parser.add_argument(
         "--language", help="language", choices=["en", "de", "es", "zh"], default="en", type=str
     )
     parser.add_argument(
         "--input_case",
-        help="input capitalization",
+        help="feats capitalization",
         choices=["lower_cased", "cased"],
         default="cased",
         type=str,
@@ -506,7 +506,7 @@ def parse_args():
     parser.add_argument("--verbose", help="print info for debugging", action="store_true")
     parser.add_argument(
         "--punct_post_process",
-        help="set to True to enable punctuation post processing to match input.",
+        help="set to True to enable punctuation post processing to match feats.",
         action="store_true",
     )
     parser.add_argument(

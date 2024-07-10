@@ -132,7 +132,7 @@ class _Conv1d(nn.Module):
         dilation: int,
         stride: int,
     ):
-        # Detecting input shape
+        # Detecting feats shape
         L_in = x.shape[-1]
 
         # Time padding
@@ -144,7 +144,7 @@ class _Conv1d(nn.Module):
         return x
 
     def _check_input_shape(self, shape):
-        """Checks the input shape and returns the number of input channels."""
+        """Checks the feats shape and returns the number of feats channels."""
 
         if len(shape) == 2:
             self.unsqueeze = True
@@ -238,7 +238,7 @@ class Res2NetBlock(torch.nn.Module):
     Arguments
     ---------
     in_channels : int
-        The number of channels expected in the input.
+        The number of channels expected in the feats.
     out_channels : int
         The number of output channels.
     scale : int
@@ -298,7 +298,7 @@ class SEBlock(nn.Module):
     Arguments
     ---------
     in_channels : int
-        The number of input channels.
+        The number of feats channels.
     se_channels : int
         The number of output channels after squeeze.
     out_channels : int
@@ -340,12 +340,12 @@ class SEBlock(nn.Module):
 
 class AttentiveStatisticsPooling(nn.Module):
     """This class implements an attentive statistic pooling layer for each channel.
-    It returns the concatenated mean and std of the input tensor.
+    It returns the concatenated mean and std of the feats tensor.
 
     Arguments
     ---------
     channels: int
-        The number of input channels.
+        The number of feats channels.
     attention_channels: int
         The number of attention channels.
 
@@ -372,7 +372,7 @@ class AttentiveStatisticsPooling(nn.Module):
         self.conv = Conv1d(in_channels=attention_channels, out_channels=channels, kernel_size=1)
 
     def forward(self, x, lengths=None):
-        """Calculates mean and std for a batch (input tensor).
+        """Calculates mean and std for a batch (feats tensor).
 
         Arguments
         ---------
@@ -438,7 +438,7 @@ class SERes2NetBlock(nn.Module):
     activation : torch class
         A class for constructing the activation layers.
     groups: int
-    Number of blocked connections from input channels to output channels.
+    Number of blocked connections from feats channels to output channels.
 
     Example
     -------

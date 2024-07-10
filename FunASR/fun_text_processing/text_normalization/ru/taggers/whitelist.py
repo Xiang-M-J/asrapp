@@ -16,7 +16,7 @@ class WhiteListFst(GraphFst):
     This class has highest priority among all classifier grammars. Whitelisted tokens are defined and loaded from "data/whitelist.tsv".
 
     Args:
-        input_case: accepting either "lower_cased" or "cased" input.
+        input_case: accepting either "lower_cased" or "cased" feats.
         deterministic: if True will provide a single transduction option,
             for False multiple options (used for audio-based normalization)
         input_file: path to a file with whitelist replacements

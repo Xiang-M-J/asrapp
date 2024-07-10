@@ -53,12 +53,12 @@ class OrdinalFst(GraphFst):
         graph_a_suffix = optional_in_front + ordinal_graph_a
 
         # don't convert ordinals from one to nine inclusive
-        graph_exception = pynini.project(pynini.union(graph_digit), "input")
+        graph_exception = pynini.project(pynini.union(graph_digit), "feats")
         graph_o_suffix = (
-            pynini.project(graph_o_suffix, "input") - graph_exception.arcsort()
+            pynini.project(graph_o_suffix, "feats") - graph_exception.arcsort()
         ) @ graph_o_suffix
         graph_a_suffix = (
-            pynini.project(graph_a_suffix, "input") - graph_exception.arcsort()
+            pynini.project(graph_a_suffix, "feats") - graph_exception.arcsort()
         ) @ graph_a_suffix
 
         graph = (

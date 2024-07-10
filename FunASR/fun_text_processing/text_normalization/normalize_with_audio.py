@@ -46,7 +46,7 @@ To run with a single audio file, specify path to audio and text with:
            --model QuartzNet15x5Base-En \
            --verbose
 
-To see possible normalization options for a text input without an audio file (could be used for debugging), run:
+To see possible normalization options for a text feats without an audio file (could be used for debugging), run:
     python python normalize_with_audio.py --text "RAW TEXT"
 
 Specify `--cache_dir` to generate .far grammars once and re-used them for faster inference
@@ -59,7 +59,7 @@ class NormalizerWithAudio(Normalizer):
     Useful for TTS preprocessing.
 
     Args:
-        input_case: expected input capitalization
+        input_case: expected feats capitalization
         lang: language
         cache_dir: path to a dir with .far grammar file. Set to None to avoid using cache.
         overwrite_cache: set to True to overwrite .far files
@@ -114,7 +114,7 @@ class NormalizerWithAudio(Normalizer):
 
         if len(text.split()) > 500:
             raise ValueError(
-                "Your input is too long. Please split up the input into sentences, "
+                "Your feats is too long. Please split up the feats into sentences, "
                 "or strings with fewer than 500 words"
             )
 
@@ -182,7 +182,7 @@ class NormalizerWithAudio(Normalizer):
         """
         Returns text after tokenize and classify
         Args;
-            text: input  text
+            text: feats  text
             n_tagged: number of tagged options to consider, -1 - return all possible tagged options
         """
         if n_tagged == -1:
@@ -256,7 +256,7 @@ class NormalizerWithAudio(Normalizer):
 
         Args:
             normalized_texts: normalized text options
-            input_text: input text
+            input_text: feats text
             pred_text: ASR model transcript of the audio file corresponding to the normalized text
             verbose: whether to print intermediate meta information
             remove_punct: whether to remove punctuation before calculating CER
@@ -327,11 +327,11 @@ def get_asr_model(asr_model):
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument(
-        "--text", help="input string or path to a .txt file", default=None, type=str
+        "--text", help="feats string or path to a .txt file", default=None, type=str
     )
     parser.add_argument(
         "--input_case",
-        help="input capitalization",
+        help="feats capitalization",
         choices=["lower_cased", "cased"],
         default="cased",
         type=str,

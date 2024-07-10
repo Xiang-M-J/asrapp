@@ -133,7 +133,7 @@ class UmapHdbscan:
 
 
 class ClusterBackend(torch.nn.Module):
-    r"""Perfom clustering for input embeddings and output the labels.
+    r"""Perfom clustering for feats embeddings and output the labels.
     Args:
         model_dir: A model dir.
         model_config: The model config.
@@ -150,7 +150,7 @@ class ClusterBackend(torch.nn.Module):
     def forward(self, X, **params):
         # clustering and return the labels
         k = params["oracle_num"] if "oracle_num" in params else None
-        assert len(X.shape) == 2, "modelscope error: the shape of input should be [N, C]"
+        assert len(X.shape) == 2, "modelscope error: the shape of feats should be [N, C]"
         if X.shape[0] < 20:
             return np.zeros(X.shape[0], dtype="int")
         if X.shape[0] < 2048 or k is not None:

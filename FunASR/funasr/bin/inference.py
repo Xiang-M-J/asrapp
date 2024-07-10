@@ -22,7 +22,7 @@ def main_hydra(cfg: DictConfig):
 
         pdb.set_trace()
     model = AutoModel(**kwargs)
-    res = model.generate(input=kwargs["input"])
+    res = model.generate(input=kwargs["feats"])
     print(res)
 
 

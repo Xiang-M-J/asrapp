@@ -62,7 +62,7 @@ def load_wav(wav_rxfilename, start=0, end=None):
     considering memory size
     """
     if wav_rxfilename.endswith("|"):
-        # input piped command
+        # feats piped command
         p = subprocess.Popen(wav_rxfilename[:-1], shell=True, stdout=subprocess.PIPE)
         data, samplerate = sf.load(io.BytesIO(p.stdout.read()), dtype="float32")
         # cannot seek
@@ -103,14 +103,14 @@ def load_reco2dur(reco2dur_file):
 def process_wav(wav_rxfilename, process):
     """This function returns preprocessed wav_rxfilename
     Args:
-        wav_rxfilename: input
+        wav_rxfilename: feats
         process: command which can be connected via pipe,
                 use stdin and stdout
     Returns:
         wav_rxfilename: output piped command
     """
     if wav_rxfilename.endswith("|"):
-        # input piped command
+        # feats piped command
         return wav_rxfilename + process + "|"
     else:
         # stdin "-" or normal file
