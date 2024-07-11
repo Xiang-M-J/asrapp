@@ -1,5 +1,12 @@
 import 'dart:math';
 
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:mainapp/utils/feature_utils.dart';
+import 'package:onnxruntime/onnxruntime.dart';
+
 class VadStateMachine {
   static int kVadInStateStartPointNotDetected = 1;
   static int kVadInStateInSpeechSegment = 2;
@@ -746,15 +753,92 @@ class FsmnVADStreaming {
 }
 
 
-void main(){
-  FsmnVADStreaming streaming = FsmnVADStreaming();
-  for(var i = 0; i < 100; i++){
-    List<double> waveform = List<double>.generate(190000, (i) => Random().nextInt(255).toDouble(), growable: true);
-    List<List<double>> scores = List<List<double>>.filled(1186, List<double>.generate(248, (i) =>  Random().nextDouble()), growable: true);
-    final segments = streaming.forward(scores, waveform);
-    print(segments);
-    scores.removeAt(0);
+class FsmnVaDetector {
+
+  OrtSessionOptions? _sessionOptions;
+  OrtSession? _session;
+  bool isInitialed = false;
+  /// model states
+  var _triggered = false;
+  FsmnVADStreaming? streaming = FsmnVADStreaming();
+
+  FsmnVaDetector();
+
+  reset() {
+    _triggered = false;
+
   }
 
+  release() {
+    _sessionOptions?.release();
+    _sessionOptions = null;
+    _session?.release();
+    _session = null;
+    streaming = null;
+  }
 
+  Future<bool> initModel(String path) async {
+    _sessionOptions = OrtSessionOptions()
+      ..setInterOpNumThreads(1)
+      ..setIntraOpNumThreads(1)
+      ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
+    const assetFileName = 'assets/models/fsmn_vad.onnx';
+    final rawAssetFile = await rootBundle.load(assetFileName);
+    final bytes = rawAssetFile.buffer.asUint8List();
+    _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
+    isInitialed = true;
+    return true;
+  }
+
+  Future<bool> initModelWrapper(String path){
+    return compute(initModel, path);
+  }
+  
+  List<double> int2double(List<int> intData){
+    List<double> doubleData = intData.map((e) => e / 32768).toList();
+    return doubleData;
+  }
+
+  doubleList2FloatList(List<List<double>> data){
+    List<Float32List> out = List.empty(growable: true);
+    for (var i = 0; i < data.length; i++) {
+      var flist = Float32List.fromList(data[i]);
+      out.add(flist);
+    }
+    return out;
+  }
+
+  Future<List<List<int>>?> predict(List<int> intData) async {
+    final feature = extractFbankOnline(intData);
+    final inputOrt = OrtValueTensor.createTensorWithDataList(doubleList2FloatList(feature), [1, feature.length, 400]);
+    final runOptions = OrtRunOptions();
+    final inputs = {'feats': inputOrt};
+    final List<OrtValue?>? outputs;
+
+    outputs = await _session?.runAsync(runOptions, inputs);
+    inputOrt.release();
+
+    runOptions.release();
+    /// Output probability & update h,c recursively
+    final output = (outputs?[0]?.value as List<List<List<double>>>)[0];
+
+    outputs?.forEach((element) {
+      element?.release();
+    });
+    List<List<int>>? segments = streaming?.forward(output, int2double(intData));
+
+    return segments;
+  }
 }
+
+
+// void main(){
+//   FsmnVADStreaming streaming = FsmnVADStreaming();
+//   for(var i = 0; i < 100; i++){
+//     List<double> waveform = List<double>.generate(190000, (i) => Random().nextInt(255).toDouble(), growable: true);
+//     List<List<double>> scores = List<List<double>>.filled(1186, List<double>.generate(248, (i) =>  Random().nextDouble()), growable: true);
+//     final segments = streaming.forward(scores, waveform);
+//     print(segments);
+//     scores.removeAt(0);
+//   }
+// }

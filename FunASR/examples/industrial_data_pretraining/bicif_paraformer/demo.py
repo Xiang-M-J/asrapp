@@ -8,7 +8,7 @@ from funasr import AutoModel
 model = AutoModel(
     model="iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
     vad_model="iic/speech_fsmn_vad_zh-cn-16k-common-pytorch",
-    punc_model="iic/punc_ct-transformer_cn-en-common-vocab471067-large",
+    # punc_model="iic/punc_ct-transformer_cn-en-common-vocab471067-large",
     # spk_model="iic/speech_campplus_sv_zh-cn_16k-common",
 )
 

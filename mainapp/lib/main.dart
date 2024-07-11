@@ -9,8 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mainapp/pages/show_toasts.dart';
-import 'package:mainapp/utils/feature.dart';
+import 'package:mainapp/utils/feature_utils.dart';
+import 'package:mainapp/utils/fsmnvad_dector.dart';
 import 'package:mainapp/utils/ort_env_utils.dart';
+import 'package:mainapp/utils/sound_utils.dart';
 import 'package:mainapp/utils/speech_recognizer.dart';
 import 'package:mainapp/utils/voice_activity_detector.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,23 +23,6 @@ import 'package:file_selector/file_selector.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
-}
-
-Future<bool> _initialModel(Set input) async {
-  try {
-    // WidgetsFlutterBinding.ensureInitialized();
-    await input.last?.initModel(input.first);
-  } catch (e) {
-    print(e.toString());
-    return false;
-  }
-
-  //   setState(() {
-  //     isSpeechRecognizeModelInitialed = true;
-  //     statusController.text = "语音识别模型已加载";
-  //   });
-  // }
-  return true;
 }
 
 class MyApp extends StatelessWidget {
@@ -80,6 +65,8 @@ class AsrScreenState extends State<AsrScreen> {
   int maxRecordTime = 300;
 
   FlutterSoundRecorder? mRecorder = FlutterSoundRecorder();
+  FlutterSoundPlayer? mPlayer = FlutterSoundPlayer();
+
   List<Uint8List> data = List<Uint8List>.empty(growable: true);
   String? audioPath;
   StreamSubscription? recordingDataSubscription;
@@ -88,7 +75,7 @@ class AsrScreenState extends State<AsrScreen> {
   List<String> tempNames = List.empty(growable: true);
 
   SpeechRecognizer? speechRecognizer;
-  VaDetector? vaDetector;
+  FsmnVaDetector? vaDetector;
 
   static const sampleRate = 16000;
 
@@ -102,36 +89,15 @@ class AsrScreenState extends State<AsrScreen> {
   @override
   void initState() {
     super.initState();
-    // _player = FlutterSoundPlayer();
-    // _recorder = FlutterSoundRecorder();
     initializeAudio();
 
-    // speechRecognizer = SpeechRecognizer();
-
     if (!isSpeechRecognizeModelInitialed) {
       statusController.text = "语音识别模型正在加载";
     }
-    // compute(initialModel as ComputeCallback);
     initOrtEnv();
     speechRecognizer = SpeechRecognizer();
-    vaDetector = VaDetector();
+    vaDetector = FsmnVaDetector();
     speechRecognizer?.initModel();
-    // initialModel();
-  }
-
-  void initialModel() async {
-    if (!isSpeechRecognizeModelInitialed) {
-      statusController.text = "语音识别模型正在加载";
-      const assetFileName = 'assets/models/BiCifParaformer.onnx';
-      final rawAssetFile = await rootBundle.load(assetFileName);
-      final input = {rawAssetFile, speechRecognizer};
-      isSpeechRecognizeModelInitialed = await compute(_initialModel, input);
-      await speechRecognizer?.tokenizer.init();
-      if (isSpeechRecognizeModelInitialed) {
-        statusController.text = "语音识别模型加载完成";
-      }
-      setState(() {});
-    }
   }
 
   Future<void> initializeAudio() async {
@@ -161,6 +127,7 @@ class AsrScreenState extends State<AsrScreen> {
     setState(() {
       mRecorderIsInitialed = true;
     });
+    mPlayer!.openPlayer();
   }
 
   Future<void> deleteFiles() async {
@@ -174,18 +141,25 @@ class AsrScreenState extends State<AsrScreen> {
 
   @override
   void dispose() {
-    // _player.closePlayer();
-    // _recorder.closeRecorder();
     resultController.dispose();
     statusController.dispose();
     _timer?.cancel();
     mRecorder!.closeRecorder();
     mRecorder = null;
+    mPlayer!.closePlayer();
+    mPlayer = null;
     deleteFiles();
     vaDetector?.release();
     speechRecognizer?.release();
     releaseOrtEnv();
     super.dispose();
+  }
+
+  void playRemindSound() async{
+    await mPlayer!.startPlayer(
+      fromDataBuffer: remindSound,
+      codec: Codec.pcm16WAV
+    );
   }
 
   Future<IOSink> createFile() async {
@@ -269,8 +243,8 @@ class AsrScreenState extends State<AsrScreen> {
   }
 
   Float32List int2Float(List<int> raw){
-    List<double> raw_d = raw.map((e) => e / 32768).toList();
-    Float32List input = Float32List.fromList(raw_d);
+    List<double> rawD = raw.map((e) => e / 32768).toList();
+    Float32List input = Float32List.fromList(rawD);
     return input;
   }
 
@@ -286,7 +260,7 @@ class AsrScreenState extends State<AsrScreen> {
     if (isRecognizing) return;
     if (_timer!.isActive) {
       if (_count < 1) {
-        print("too short");
+        showToastWrapper("说话时间太短了");
       }
       _timer?.cancel();
     }
@@ -324,7 +298,6 @@ class AsrScreenState extends State<AsrScreen> {
               padding:
                   const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
               child: TextField(
-                // key: _formKey,
                 controller: statusController,
                 style: const TextStyle(color: Colors.grey),
                 decoration: const InputDecoration(
@@ -361,8 +334,7 @@ class AsrScreenState extends State<AsrScreen> {
               onLongPressStart: isSpeechRecognizeModelInitialed
                   ? (details) {
                       if (isRecognizing) {
-                        showRecordingToast();
-
+                        showToastWrapper("正在识别，请稍等");
                         return;
                       }
                       _count = 0;
@@ -413,11 +385,15 @@ class AsrScreenState extends State<AsrScreen> {
             ElevatedButton(
                 onPressed: isSpeechRecognizeModelInitialed
                     ? () async {
-                        if (isRecognizing) return;
+                        if (isRecognizing) {
+                          showToastWrapper("正在识别,请稍等");
+                          return;
+                        }
                         setState(() {
                           isRecognizing = true;
                           statusController.text = "正在识别...";
                         });
+                        // playRemindSound();
                         try {
                           final rawData = await rootBundle
                               .load("assets/audio/asr_example.wav");
@@ -430,9 +406,10 @@ class AsrScreenState extends State<AsrScreen> {
                             setState(() {
                               statusController.text = "正在获取VAD结果";
                             });
-                            Float32List input = int2Float(intData);
+                            // Float32List input = int2Float(intData);
                             // TODO 修改
-                            vaDetector?.predict(input);
+                             List<List<int>>? segments = await vaDetector?.predict(intData);
+                             print(segments);
                           }
                           recognizeResult = await speechRecognizer
                               ?.predictWrapper(processInput(intData));
@@ -489,7 +466,10 @@ class AsrScreenState extends State<AsrScreen> {
                           setState(() {
                             statusController.text = "正在加载VAD模型";
                           });
-                          vaDetector?.initModel();
+                          vaDetector?.initModel("assets/models/fsmn_vad.onnx");
+                          setState(() {
+                            statusController.text = "已加载VAD模型";
+                          });
                         }
                       })
                 ),

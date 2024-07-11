@@ -44,13 +44,18 @@ in_cache1 = torch.randn(1, 128, 19, 1)
 in_cache2 = torch.randn(1, 128, 19, 1)
 in_cache3 = torch.randn(1, 128, 19, 1)
 
-inputs = (feats, waveform)
-torch.onnx.export(vad_model, inputs, "fsmnVad.onnx", export_modules_as_functions=True, opset_version=16,
-                  input_names=["feats", "waveform"],
-                  output_names=["scores", "info"],
+inputs = (feats)
+# script = torch.onnx.dynamo_export(vad_model, inputs, "fsmnVad.onnx", opset_version=16,
+#                   input_names=["feats", "waveform"],
+#                   output_names=["scores", "info"],
+#                   dynamic_axes={'feats': {1: 'sequence_length'},
+#                                 "waveform": {1: 'time_length'},
+#                                 "info": {0: "seg_len"}
+#                                 })
+torch.onnx.export(vad_model, inputs, "fsmnVad.onnx", opset_version=16,
+                  input_names=["feats"],
+                  output_names=["scores"],
                   dynamic_axes={'feats': {1: 'sequence_length'},
-                                "waveform": {1: 'time_length'},
-                                "info": {0: "seg_len"}
                                 })
 
 # inputs = (feats, in_cache0, in_cache1, in_cache2, in_cache3)

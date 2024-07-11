@@ -20,7 +20,7 @@ model = onnx.load("silero_vad.onnx")
 # model.graph.node[0].CopyFrom(reshape_node)
 # onnx.save_model(model, "fsmnVad_change.onnx")
 
-ort_session = onnxruntime.InferenceSession("silero_vad.onnx")
+ort_session = onnxruntime.InferenceSession("fsmnVad.onnx")
 
 
 def to_numpy(tensor):

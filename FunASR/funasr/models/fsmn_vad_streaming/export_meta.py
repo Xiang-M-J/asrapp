@@ -49,10 +49,10 @@ def export_forward(self, feats: torch.Tensor, *args, **kwargs):
     return scores, out_caches
 
 
-def export_forward_my(self, feats, waveform):
+def export_forward_my(self, feats):
 
     scores = self.encoder(feats)
-    segments = self.helper(scores, waveform)
+    # segments = self.helper(scores, waveform)
     # is_final = False
     # cache = {}
     # if len(cache) == 0:
@@ -133,7 +133,7 @@ def export_forward_my(self, feats, waveform):
     #
     #     if segment_batch:
     #         segments.append(segment_batch)
-    return scores, segments
+    return scores
 
 
 def export_dummy_inputs(self, data_in=None, frame=30):

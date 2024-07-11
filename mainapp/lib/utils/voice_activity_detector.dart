@@ -64,8 +64,7 @@ class VaDetector {
   }
 
   Future<bool> predict(Float32List data) async {
-    final inputOrt =
-    OrtValueTensor.createTensorWithDataList(data, [_batch, _windowSizeSamples]);
+    final inputOrt = OrtValueTensor.createTensorWithDataList(data);
     final srOrt = OrtValueTensor.createTensorWithData(_sampleRate);
     final hOrt = OrtValueTensor.createTensorWithDataList(_hide);
     final cOrt = OrtValueTensor.createTensorWithDataList(_cell);

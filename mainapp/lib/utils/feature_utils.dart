@@ -9,9 +9,12 @@ final DynamicLibrary fbankLib = Platform.isAndroid
     ? DynamicLibrary.open("libFbank.so")
     : DynamicLibrary.process();
 
+
 typedef FbankFunc = Void Function(Pointer<Float>, Pointer<Pointer<Float>>, Int32);
 
 final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontend = fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontend").asFunction();
+final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontendOnline = fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontendOnline").asFunction();
+
 
 Pointer<Float> Uint8list2FloatPointer(List<int> list){
   int s = list.length * 4;
@@ -50,6 +53,35 @@ List<List<double>> extractFbank(List<int> waveform){
     }
   }
   wavFrontend(waveformPointer, output, sampleNum);
+
+  List<List<double>> fbank = FloatMat2FloatList(output, axis1, axis2);
+  calloc.free(waveformPointer);
+  for (var i = 0; i < axis1; i++) {
+    calloc.free(output[i]);
+  }
+  calloc.free(output);
+  return fbank;
+}
+
+List<List<double>> extractFbankOnline(List<int> waveform){
+  Pointer<Float> waveformPointer = Uint8list2FloatPointer(waveform);
+  int sampleNum = waveform.length;
+  int wlen = 25 * 16;
+  int inc = 10 * 16;
+  int lfr_m = 5;
+  int lfr_n = 1;
+  int m = 1 + (sampleNum - wlen) ~/ inc;
+  int m_lfm = ((lfr_m - 1) ~/ 2);
+  int axis1 = ((m + m_lfm - lfr_m) / (lfr_n * 1.0)).ceil() + 1;
+  int axis2 = lfr_m * 80;
+  Pointer<Pointer<Float>> output = calloc<Pointer<Float>>(axis1 * 4);
+  for (var i = 0; i < axis1; i++) {
+    output[i] = calloc<Float>(axis2 * 4);
+    for (var j = 0; j < axis2; j++) {
+      output[i][j] = 0.0;
+    }
+  }
+  wavFrontendOnline(waveformPointer, output, sampleNum);
 
   List<List<double>> fbank = FloatMat2FloatList(output, axis1, axis2);
   calloc.free(waveformPointer);
