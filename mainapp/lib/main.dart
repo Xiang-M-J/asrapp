@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
@@ -9,12 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mainapp/pages/show_toasts.dart';
-import 'package:mainapp/utils/feature_utils.dart';
 import 'package:mainapp/utils/fsmnvad_dector.dart';
 import 'package:mainapp/utils/ort_env_utils.dart';
 import 'package:mainapp/utils/sound_utils.dart';
 import 'package:mainapp/utils/speech_recognizer.dart';
-import 'package:mainapp/utils/voice_activity_detector.dart';
+import 'package:mainapp/utils/type_converter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
@@ -155,11 +153,9 @@ class AsrScreenState extends State<AsrScreen> {
     super.dispose();
   }
 
-  void playRemindSound() async{
-    await mPlayer!.startPlayer(
-      fromDataBuffer: remindSound,
-      codec: Codec.pcm16WAV
-    );
+  void playRemindSound() async {
+    await mPlayer!
+        .startPlayer(fromDataBuffer: remindSound, codec: Codec.pcm16WAV);
   }
 
   Future<IOSink> createFile() async {
@@ -198,18 +194,6 @@ class AsrScreenState extends State<AsrScreen> {
     setState(() {});
   }
 
-  List<int> toInt16(List<Uint8List> rawData) {
-    List<int> intArray = List.empty(growable: true);
-
-    for (var i = 0; i < rawData.length; i++) {
-      ByteData byteData = ByteData.sublistView(rawData[i]);
-      for (var i = 0; i < byteData.lengthInBytes; i += 2) {
-        intArray.add(byteData.getInt16(i, Endian.little).toInt());
-      }
-    }
-    return intArray;
-  }
-
   ///停止语音录制的方法
   Future<void> stop() async {
     await mRecorder!.stopRecorder();
@@ -222,30 +206,54 @@ class AsrScreenState extends State<AsrScreen> {
       isRecognizing = true;
       statusController.text = "正在识别...";
     });
-    final intData = toInt16(data);
-    recognizeResult = await speechRecognizer
-        ?.predictWrapper(processInput(intData));
-    resultController.text = recognizeResult ?? "未识别到结果";
-    speechRecognizer?.reset();
+    final intData = uin8toInt16(data);
+
+    await inference(intData);
+
     setState(() {
       isRecognizing = false;
       statusController.text = "识别完成";
     });
   }
 
-  processInput(List<int> raw) {
-    List<int> waveform = List.empty(growable: true);
-    for (var i = 0; i < raw.length; i++) {
-      waveform.add((raw[i]));
+  // 进行推理，包括 VAD 和语音识别
+  inference(List<int> intData) async {
+    List<List<int>>? segments;
+    if (useVAD && vaDetector!.isInitialed) {
+      setState(() {
+        statusController.text = "正在获取VAD结果";
+      });
+      segments = await vaDetector?.predict(intData);
     }
-    List<List<double>> fbank = extractFbank(waveform);
-    return fbank;
-  }
+    if ((useVAD && segments == null) || (useVAD && segments!.isEmpty)) {
+      showToastWrapper("似乎没有检测到语音");
+      setState(() {
+        statusController.text = "识别完成";
+        recognizeResult = "";
+      });
+    } else {
+      setState(() {
+        statusController.text = "开始语音识别...";
+      });
+      Map? result;
+      if (useVAD && segments!.isNotEmpty) {
+        result = await speechRecognizer?.predictWithVADAsync(intData, segments);
+      } else {
+        result = await speechRecognizer?.predictAsync(intData);
+      }
 
-  Float32List int2Float(List<int> raw){
-    List<double> rawD = raw.map((e) => e / 32768).toList();
-    Float32List input = Float32List.fromList(rawD);
-    return input;
+      if (result != null) {
+        if (useVAD) {
+          recognizeResult = speechRecognizer?.puncByVAD(segments!, result);
+        } else {
+          recognizeResult = result["char"].join(" ") + "。";
+        }
+      } else {
+        recognizeResult = null;
+      }
+    }
+    resultController.text = recognizeResult ?? "未识别到结果";
+    speechRecognizer?.reset();
   }
 
   showVoiceView() {
@@ -395,31 +403,18 @@ class AsrScreenState extends State<AsrScreen> {
                         });
                         // playRemindSound();
                         try {
-                          final rawData = await rootBundle
-                              .load("assets/audio/asr_example.wav");
+                          final rawData =
+                              await rootBundle.load("assets/audio/asr_example.wav");
                           List<int> intData = List.empty(growable: true);
                           for (var i = 78; i < rawData.lengthInBytes; i += 2) {
                             intData.add(
                                 rawData.getInt16(i, Endian.little).toInt());
                           }
-                          if (useVAD && vaDetector!.isInitialed){
-                            setState(() {
-                              statusController.text = "正在获取VAD结果";
-                            });
-                            // Float32List input = int2Float(intData);
-                            // TODO 修改
-                             List<List<int>>? segments = await vaDetector?.predict(intData);
-                             print(segments);
-                          }
-                          recognizeResult = await speechRecognizer
-                              ?.predictWrapper(processInput(intData));
-
-                          resultController.text = recognizeResult ?? "未识别到结果";
+                          await inference(intData);
                         } catch (e) {
                           print(e.toString());
+                          speechRecognizer?.reset();
                         }
-
-                        speechRecognizer?.reset();
                         setState(() {
                           isRecognizing = false;
                           statusController.text = "识别完成";
@@ -444,35 +439,68 @@ class AsrScreenState extends State<AsrScreen> {
                 maxLines: 10,
               ),
             ),
-            
             Row(
               children: [
-                const Padding(padding: EdgeInsets.only(left: 10, top: 10, right: 10,  bottom: 0),
-                  child: Text("是否使用VAD", style: TextStyle(
-                      fontSize: 16
-                  ),),
-
+                const Padding(
+                  padding:
+                      EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 0),
+                  child: Text(
+                    "是否使用VAD",
+                    style: TextStyle(fontSize: 16),
+                  ),
                 ),
-                Padding(padding: const EdgeInsets.only(left: 0, top: 10, right: 0,  bottom: 0),
-                  child: Switch(
-                      value: useVAD,
-                      activeColor: Colors.blue,
-                      // inactiveThumbColor: Colors.black,
-                      onChanged: (value) {
-                        setState(() {
-                          useVAD = value;
-                        });
-                        if (!vaDetector!.isInitialed){
+                Padding(
+                    padding: const EdgeInsets.only(
+                        left: 0, top: 10, right: 0, bottom: 0),
+                    child: Switch(
+                        value: useVAD,
+                        activeColor: Colors.blue,
+                        // inactiveThumbColor: Colors.black,
+                        onChanged: (value) {
                           setState(() {
-                            statusController.text = "正在加载VAD模型";
+                            useVAD = value;
                           });
-                          vaDetector?.initModel("assets/models/fsmn_vad.onnx");
-                          setState(() {
-                            statusController.text = "已加载VAD模型";
-                          });
-                        }
-                      })
-                ),
+                          if (!vaDetector!.isInitialed) {
+                            setState(() {
+                              statusController.text = "正在加载VAD模型";
+                            });
+                            vaDetector
+                                ?.initModel("assets/models/fsmn_vad.onnx");
+                            setState(() {
+                              statusController.text = "已加载VAD模型";
+                            });
+                          }
+                        })),
+                // const Padding(
+                //   padding:
+                //   EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 0),
+                //   child: Text(
+                //     "",
+                //     style: TextStyle(fontSize: 16),
+                //   ),
+                // ),
+                // Padding(
+                //     padding: const EdgeInsets.only(
+                //         left: 0, top: 10, right: 0, bottom: 0),
+                //     child: Switch(
+                //         value: useVAD,
+                //         activeColor: Colors.blue,
+                //         // inactiveThumbColor: Colors.black,
+                //         onChanged: (value) {
+                //           setState(() {
+                //             useVAD = value;
+                //           });
+                //           if (!vaDetector!.isInitialed) {
+                //             setState(() {
+                //               statusController.text = "正在加载VAD模型";
+                //             });
+                //             vaDetector
+                //                 ?.initModel("assets/models/fsmn_vad.onnx");
+                //             setState(() {
+                //               statusController.text = "已加载VAD模型";
+                //             });
+                //           }
+                //         })),
               ],
             )
           ],

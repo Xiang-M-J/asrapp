@@ -16,7 +16,7 @@ final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontend = 
 final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontendOnline = fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontendOnline").asFunction();
 
 
-Pointer<Float> Uint8list2FloatPointer(List<int> list){
+Pointer<Float> uint8list2FloatPointer(List<int> list){
   int s = list.length * 4;
   Pointer<Float> fp = calloc<Float>(s);
   for (var i = 0; i < list.length; i++) {
@@ -25,7 +25,7 @@ Pointer<Float> Uint8list2FloatPointer(List<int> list){
   return fp;
 }
 
-List<List<double>> FloatMat2FloatList(Pointer<Pointer<Float>> m, int axis1, int axis2){
+List<List<double>> floatMat2FloatList(Pointer<Pointer<Float>> m, int axis1, int axis2){
   List<List<double>> a = List.empty(growable: true);
   for (var i = 0; i < axis1; i++) {
     List<double> b = List.empty(growable: true);
@@ -38,7 +38,7 @@ List<List<double>> FloatMat2FloatList(Pointer<Pointer<Float>> m, int axis1, int 
 }
 
 List<List<double>> extractFbank(List<int> waveform){
-  Pointer<Float> waveformPointer = Uint8list2FloatPointer(waveform);
+  Pointer<Float> waveformPointer = uint8list2FloatPointer(waveform);
   int sampleNum = waveform.length;
   int wlen = 25 * 16;
   int inc = 10 * 16;
@@ -54,7 +54,7 @@ List<List<double>> extractFbank(List<int> waveform){
   }
   wavFrontend(waveformPointer, output, sampleNum);
 
-  List<List<double>> fbank = FloatMat2FloatList(output, axis1, axis2);
+  List<List<double>> fbank = floatMat2FloatList(output, axis1, axis2);
   calloc.free(waveformPointer);
   for (var i = 0; i < axis1; i++) {
     calloc.free(output[i]);
@@ -64,15 +64,14 @@ List<List<double>> extractFbank(List<int> waveform){
 }
 
 List<List<double>> extractFbankOnline(List<int> waveform){
-  Pointer<Float> waveformPointer = Uint8list2FloatPointer(waveform);
+  Pointer<Float> waveformPointer = uint8list2FloatPointer(waveform);
   int sampleNum = waveform.length;
   int wlen = 25 * 16;
   int inc = 10 * 16;
   int lfr_m = 5;
   int lfr_n = 1;
   int m = 1 + (sampleNum - wlen) ~/ inc;
-  int m_lfm = ((lfr_m - 1) ~/ 2);
-  int axis1 = ((m + m_lfm - lfr_m) / (lfr_n * 1.0)).ceil() + 1;
+  int axis1 = ((m) ~/ (lfr_n));
   int axis2 = lfr_m * 80;
   Pointer<Pointer<Float>> output = calloc<Pointer<Float>>(axis1 * 4);
   for (var i = 0; i < axis1; i++) {
@@ -83,7 +82,7 @@ List<List<double>> extractFbankOnline(List<int> waveform){
   }
   wavFrontendOnline(waveformPointer, output, sampleNum);
 
-  List<List<double>> fbank = FloatMat2FloatList(output, axis1, axis2);
+  List<List<double>> fbank = floatMat2FloatList(output, axis1, axis2);
   calloc.free(waveformPointer);
   for (var i = 0; i < axis1; i++) {
     calloc.free(output[i]);

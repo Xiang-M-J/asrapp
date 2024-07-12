@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:mainapp/utils/feature_utils.dart';
+import 'package:mainapp/utils/type_converter.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
 class VadStateMachine {
@@ -248,14 +249,15 @@ class FsmnVADStreaming {
               (vad_opts.frame_in_ms * vad_opts.sample_rate ~/ 1000));
       cache["stats"].decibel = cache["stats"].decibel.sublist(realDropFrames);
       if (realDropFrames == cache["stats"].scores.length){
-        cache["stats"].scores = List<List<double>>.empty(growable: true);
+        cache["stats"].scores.clear();
       }else{
-        for(var i = 0; i<realDropFrames; i++){
-
-          cache["stats"].scores.removeAt(i);
+        int nowLen = cache["stats"].scores.length;
+        List<List<double>> temp = [];
+        for(var i = realDropFrames; i<nowLen; i++){
+          temp.add(cache["stats"].scores[i]);
         }
+        cache["stats"].scores = temp;
       }
-
     }
   }
 
@@ -267,17 +269,18 @@ class FsmnVADStreaming {
     cache["stats"].data_buf_all = cache["stats"].waveform;
     cache["stats"].data_buf = cache["stats"].data_buf_all;
     cache["stats"].decibel = List<double>.empty(growable: true);
-    var frameDecibel = 0.00001;
+    var frameDecibel = 0.000001;
     for (var offset = 0;
-        offset < (cache["stats"].waveform.length - frameSampleLength + 1);
+        offset <= (cache["stats"].waveform.length - frameSampleLength);
         offset += frameShiftLength) {
-      frameDecibel = 0.00001;
+      frameDecibel = 0.000001;
       var frame =
           cache["stats"].waveform.sublist(offset, offset + frameSampleLength);
+
       for (var f in frame) {
-        frameDecibel += sqrt(f);
+        frameDecibel += (f * f);
       }
-      cache["stats"].decibel.add(log(frameDecibel) / log(10));
+      cache["stats"].decibel.add(10 * log(frameDecibel) / log(10));
     }
   }
 
@@ -316,10 +319,11 @@ class FsmnVADStreaming {
     if (lastFrmIsEndPoint) {
       int extraSample = max(
         0,
-        (vad_opts.frame_length_ms * vad_opts.sample_rate ~/ 1000 -
-            vad_opts.sample_rate * vad_opts.frame_in_ms ~/ 1000),
+        (vad_opts.frame_length_ms * vad_opts.sample_rate / 1000 -
+            vad_opts.sample_rate * vad_opts.frame_in_ms / 1000).toInt(),
       );
       expectedSampleNumber += (extraSample);
+    }
       if (endPointIsSentEnd) {
         expectedSampleNumber =
             max(expectedSampleNumber, (cache["stats"].data_buf.length));
@@ -328,7 +332,7 @@ class FsmnVADStreaming {
         print("error in calling pop data_buf\n");
       }
 
-      if (cache["stats"].output_data_buf.isEmpty || firstFrmIsStartPoint) {
+      if (cache["stats"].output_data_buf.length == 0 || firstFrmIsStartPoint) {
         cache["stats"].output_data_buf.add(E2EVadSpeechBufWithDoa());
         cache["stats"].output_data_buf.last.Reset();
         cache["stats"].output_data_buf.last.start_ms =
@@ -347,7 +351,7 @@ class FsmnVADStreaming {
         data_to_pop = expectedSampleNumber;
       } else {
         data_to_pop =
-            (frmCnt * vad_opts.frame_in_ms * vad_opts.sample_rate ~/ 1000)
+            (frmCnt * vad_opts.frame_in_ms * vad_opts.sample_rate / 1000)
                 .toInt();
       }
       if (data_to_pop > cache["stats"].data_buf.length) {
@@ -377,7 +381,7 @@ class FsmnVADStreaming {
       if (lastFrmIsEndPoint) {
         curSeg.contain_seg_end_point = true;
       }
-    }
+
   }
 
   void OnSilenceDetected(int validFrame, [Map cache = const {}]) {
@@ -449,7 +453,7 @@ class FsmnVADStreaming {
 
   int LatencyFrmNumAtStartPoint(Map cache) {
     int vad_latency = cache["windows_detector"].GetWinSize();
-    if (vad_opts.do_extend == 1) {
+    if (vad_opts.do_extend != 0) {
       vad_latency += (vad_opts.lookback_time_start_point ~/ vad_opts.frame_in_ms);
     }
     return vad_latency;
@@ -557,8 +561,8 @@ class FsmnVADStreaming {
           continue;
         }
         List<int> segment = [
-          cache["stats"].output_data_buf[i].startMs,
-          cache["stats"].output_data_buf[i].endMs,
+          cache["stats"].output_data_buf[i].start_ms,
+          cache["stats"].output_data_buf[i].end_ms,
         ];
         cache["stats"].output_data_buf_offset++; // need update this parameter
         segments.add(segment);
@@ -717,7 +721,7 @@ class FsmnVADStreaming {
             cache["stats"].max_end_sil_frame_cnt_thresh) {
           int lookbackFrame =
               (cache["stats"].max_end_sil_frame_cnt_thresh ~/ frmShiftInMs);
-          if ( vad_opts.do_extend == 1) {
+          if ( vad_opts.do_extend != 0) {
             lookbackFrame -=
                 (vad_opts.lookahead_time_end_point ~/ frmShiftInMs);
             lookbackFrame -= 1;
@@ -732,7 +736,7 @@ class FsmnVADStreaming {
             OnVoiceEnd(curFrmIdx, false, false, cache = cache);
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
-        } else if ((  vad_opts.do_extend == 1) && !isFinalFrame) {
+        } else if ((  vad_opts.do_extend != 0) && !isFinalFrame) {
           if (cache["stats"].continous_silence_frame_count <=
               (  vad_opts.lookahead_time_end_point ~/ frmShiftInMs)) {
               OnVoiceDetected(curFrmIdx, cache = cache);
@@ -758,15 +762,11 @@ class FsmnVaDetector {
   OrtSessionOptions? _sessionOptions;
   OrtSession? _session;
   bool isInitialed = false;
-  /// model states
-  var _triggered = false;
   FsmnVADStreaming? streaming = FsmnVADStreaming();
 
   FsmnVaDetector();
 
   reset() {
-    _triggered = false;
-
   }
 
   release() {
@@ -793,20 +793,6 @@ class FsmnVaDetector {
   Future<bool> initModelWrapper(String path){
     return compute(initModel, path);
   }
-  
-  List<double> int2double(List<int> intData){
-    List<double> doubleData = intData.map((e) => e / 32768).toList();
-    return doubleData;
-  }
-
-  doubleList2FloatList(List<List<double>> data){
-    List<Float32List> out = List.empty(growable: true);
-    for (var i = 0; i < data.length; i++) {
-      var flist = Float32List.fromList(data[i]);
-      out.add(flist);
-    }
-    return out;
-  }
 
   Future<List<List<int>>?> predict(List<int> intData) async {
     final feature = extractFbankOnline(intData);
@@ -825,20 +811,10 @@ class FsmnVaDetector {
     outputs?.forEach((element) {
       element?.release();
     });
-    List<List<int>>? segments = streaming?.forward(output, int2double(intData));
+    int frameNum = ((intData.length - 400) ~/ 160 + 1);
+    List<List<int>>? segments = streaming?.forward(output, intList2doubleList(intData.sublist(0, frameNum * 160 - 160 + 400)));
 
     return segments;
   }
 }
 
-
-// void main(){
-//   FsmnVADStreaming streaming = FsmnVADStreaming();
-//   for(var i = 0; i < 100; i++){
-//     List<double> waveform = List<double>.generate(190000, (i) => Random().nextInt(255).toDouble(), growable: true);
-//     List<List<double>> scores = List<List<double>>.filled(1186, List<double>.generate(248, (i) =>  Random().nextDouble()), growable: true);
-//     final segments = streaming.forward(scores, waveform);
-//     print(segments);
-//     scores.removeAt(0);
-//   }
-// }

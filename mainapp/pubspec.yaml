@@ -77,6 +77,7 @@ flutter:
   assets:
     - assets/audio/asr_example.wav
     - assets/models/
+    - assets/audio/
     - assets/
 
     # - images/a_dot_burr.jpeg
