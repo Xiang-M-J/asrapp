@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mainapp/pages/show_toasts.dart';
+import 'package:mainapp/utils/audioloader.dart';
 import 'package:mainapp/utils/fsmnvad_dector.dart';
 import 'package:mainapp/utils/ort_env_utils.dart';
 import 'package:mainapp/utils/sound_utils.dart';
@@ -77,7 +78,7 @@ class AsrScreenState extends State<AsrScreen> {
 
   static const sampleRate = 16000;
 
-  bool isSpeechRecognizeModelInitialed = true;
+  bool isSRModelInitialed = false;
   bool isRecording = false;
   bool isRecognizing = false;
 
@@ -89,13 +90,17 @@ class AsrScreenState extends State<AsrScreen> {
     super.initState();
     initializeAudio();
 
-    if (!isSpeechRecognizeModelInitialed) {
+    if (!isSRModelInitialed) {
       statusController.text = "语音识别模型正在加载";
     }
     initOrtEnv();
     speechRecognizer = SpeechRecognizer();
     vaDetector = FsmnVaDetector();
     speechRecognizer?.initModel();
+    setState(() {
+      statusController.text = "语音识别模型已加载";
+      isSRModelInitialed = true;
+    });
   }
 
   Future<void> initializeAudio() async {
@@ -339,7 +344,7 @@ class AsrScreenState extends State<AsrScreen> {
               height: 40,
             ),
             GestureDetector(
-              onLongPressStart: isSpeechRecognizeModelInitialed
+              onLongPressStart: isSRModelInitialed
                   ? (details) {
                       if (isRecognizing) {
                         showToastWrapper("正在识别，请稍等");
@@ -363,7 +368,7 @@ class AsrScreenState extends State<AsrScreen> {
                       });
                     }
                   : null,
-              onLongPressEnd: isSpeechRecognizeModelInitialed
+              onLongPressEnd: isSRModelInitialed
                   ? (details) {
                       hideVoiceView();
                     }
@@ -391,7 +396,7 @@ class AsrScreenState extends State<AsrScreen> {
               height: 20,
             ),
             ElevatedButton(
-                onPressed: isSpeechRecognizeModelInitialed
+                onPressed: isSRModelInitialed
                     ? () async {
                         if (isRecognizing) {
                           showToastWrapper("正在识别,请稍等");
@@ -403,13 +408,22 @@ class AsrScreenState extends State<AsrScreen> {
                         });
                         // playRemindSound();
                         try {
+                          WavLoader wavloader = WavLoader();
                           final rawData =
-                              await rootBundle.load("assets/audio/asr_example.wav");
+                              await rootBundle.load("assets/audio/test.wav");
                           List<int> intData = List.empty(growable: true);
-                          for (var i = 78; i < rawData.lengthInBytes; i += 2) {
+                          List<int> wavinfo = await wavloader.loadUint8List(rawData);
+                          for (var i = wavinfo[0]; i < wavinfo[0]+wavinfo[1]; i += 2) {
                             intData.add(
                                 rawData.getInt16(i, Endian.little).toInt());
                           }
+                          // WavLoader wavLoader = WavLoader();
+                          // ByteData rawData = await wavLoader.load("assets/audio/test.wav");
+                          // List<int> intData = List.empty(growable: true);
+                          // for(var i = 0; i< rawData.lengthInBytes; i+=2){
+                          //   intData.add(rawData.getInt16(i, Endian.little).toInt());
+                          // }
+
                           await inference(intData);
                         } catch (e) {
                           print(e.toString());
@@ -457,6 +471,10 @@ class AsrScreenState extends State<AsrScreen> {
                         activeColor: Colors.blue,
                         // inactiveThumbColor: Colors.black,
                         onChanged: (value) {
+                          if(!isSRModelInitialed){
+                            showToastWrapper("正在初始化语音识别模型");
+                            return;
+                          }
                           setState(() {
                             useVAD = value;
                           });

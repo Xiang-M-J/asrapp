@@ -39,6 +39,24 @@ class SpeechRecognizer {
     await tokenizer.init();
   }
 
+  initModelAsync() async {
+    const assetFileName = 'assets/models/BiCifParaformer.quant.onnx';
+    final rawAssetFile = await rootBundle.load(assetFileName);
+    await tokenizer.init();
+    return compute(_initModel, rawAssetFile);
+  }
+
+  bool _initModel(ByteData rawAssetFile) {
+    _sessionOptions = OrtSessionOptions()
+      ..setInterOpNumThreads(1)
+      ..setIntraOpNumThreads(1)
+      ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
+
+    final bytes = rawAssetFile.buffer.asUint8List();
+    _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
+    return true;
+  }
+
   List<String> greedyDecode(List<List<double>> logits) {
     final predictedIds = logits.map((e) => maxIndex(e)).toList();
 
@@ -72,7 +90,20 @@ class SpeechRecognizer {
         }
       }
     }
+  }
 
+  padSequenceFloat(List<List<Float32List>> dataAll, int maxSegmentLen){
+    if (dataAll.length == 1){
+
+    }else{
+      for (var i = 0; i< dataAll.length; i++){
+        int numPadding = maxSegmentLen - dataAll[i].length;
+        if (numPadding == 0) continue;
+        for (var j = 0; j < numPadding; j++){
+          dataAll[i].add(Float32List(560));
+        }
+      }
+    }
   }
 
   Future<Map?> predictWithVADAsync(List<int> data, List<List<int>> segments) {
@@ -94,12 +125,16 @@ class SpeechRecognizer {
       intDataAll.add(input["data"].sublist(begin, end));
     }
     int batch = intDataAll.length;
-    padSequence(intDataAll, maxSegmentLen);
+    List<int> feats_len = [];
+    int max_feats_len = 0;
+    // padSequence(intDataAll, maxSegmentLen);
     List<List<Float32List>> floatData = [];
     for(var i = 0; i<batch;i++){
       floatData.add(doubleList2FloatList(extractFbank(intDataAll[i])));
+      feats_len.add(floatData.last.length);
+      max_feats_len = max(max_feats_len, feats_len.last);
     }
-
+    padSequenceFloat(floatData, max_feats_len);
     int axis1 = floatData[0].length;
     int axis2 = floatData[0][0].length;
     final inputOrt = OrtValueTensor.createTensorWithDataList(
@@ -226,6 +261,7 @@ class SpeechRecognizer {
         decodeResult += "，";
         b += s;
       }
+      if(decodeResult.endsWith("，"))  decodeResult = decodeResult.substring(0, decodeResult.length-1);
       decodeResult += "。";
       return decodeResult;
     }

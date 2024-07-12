@@ -251,6 +251,7 @@ class FsmnVADStreaming {
       if (realDropFrames == cache["stats"].scores.length){
         cache["stats"].scores.clear();
       }else{
+        // cache["stats"].scores.sublist(realDropFrames);
         int nowLen = cache["stats"].scores.length;
         List<List<double>> temp = [];
         for(var i = realDropFrames; i<nowLen; i++){
@@ -782,17 +783,31 @@ class FsmnVaDetector {
       ..setInterOpNumThreads(1)
       ..setIntraOpNumThreads(1)
       ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
-    const assetFileName = 'assets/models/fsmn_vad.onnx';
-    final rawAssetFile = await rootBundle.load(assetFileName);
+    // const assetFileName = 'assets/models/fsmn_vad.onnx';
+    final rawAssetFile = await rootBundle.load(path);
+    final bytes = rawAssetFile.buffer.asUint8List();
+    _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
+
+    isInitialed = true;
+    return true;
+  }
+
+  Future<bool> initModelAsync(String path) async{
+    final rawAssetFile = await rootBundle.load(path);
+    return compute(_initModel, rawAssetFile);
+  }
+
+  Future<bool> _initModel(ByteData rawAssetFile) async {
+    _sessionOptions = OrtSessionOptions()
+      ..setInterOpNumThreads(1)
+      ..setIntraOpNumThreads(1)
+      ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
     final bytes = rawAssetFile.buffer.asUint8List();
     _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
     isInitialed = true;
     return true;
   }
 
-  Future<bool> initModelWrapper(String path){
-    return compute(initModel, path);
-  }
 
   Future<List<List<int>>?> predict(List<int> intData) async {
     final feature = extractFbankOnline(intData);
