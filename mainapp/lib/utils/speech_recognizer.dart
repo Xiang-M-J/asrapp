@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -77,29 +78,27 @@ class SpeechRecognizer {
     }
     return index;
   }
-  
-  padSequence(List<List<int>> intDataAll, int maxSegmentLen){
-    if (intDataAll.length == 1){
 
-    }else{
-      for (var i = 0; i< intDataAll.length; i++){
+  padSequence(List<List<int>> intDataAll, int maxSegmentLen) {
+    if (intDataAll.length == 1) {
+    } else {
+      for (var i = 0; i < intDataAll.length; i++) {
         int numPadding = maxSegmentLen - intDataAll[i].length;
         if (numPadding == 0) continue;
-        for (var j = 0; j < numPadding; j++){
+        for (var j = 0; j < numPadding; j++) {
           intDataAll[i].add(0);
         }
       }
     }
   }
 
-  padSequenceFloat(List<List<Float32List>> dataAll, int maxSegmentLen){
-    if (dataAll.length == 1){
-
-    }else{
-      for (var i = 0; i< dataAll.length; i++){
+  padSequenceFloat(List<List<Float32List>> dataAll, int maxSegmentLen) {
+    if (dataAll.length == 1) {
+    } else {
+      for (var i = 0; i < dataAll.length; i++) {
         int numPadding = maxSegmentLen - dataAll[i].length;
         if (numPadding == 0) continue;
-        for (var j = 0; j < numPadding; j++){
+        for (var j = 0; j < numPadding; j++) {
           dataAll[i].add(Float32List(560));
         }
       }
@@ -111,16 +110,24 @@ class SpeechRecognizer {
     return compute(predictWithVAD, input);
   }
 
-  Map? predictWithVAD(Map input){
+  Map? predictWithVAD(Map input) {
     List<List<int>> intDataAll = [];
     int maxSegmentLen = 0;
-    for(var i = 0; i< input["segments"].length; i++){
+    // Map sorted_segments = {};
+    // for (var i = 0; i < input["segments"].length; i++) {
+    //   sorted_segments[i] = input["segments"][i];
+    // }
+    // sorted_segments = SplayTreeMap.from(
+    //     sorted_segments,
+    //     (key1, key2) => (sorted_segments[key1][1] - sorted_segments[key1][0])!
+    //         .compareTo(sorted_segments[key2][1] - sorted_segments[key2][0]));
+    for (var i = 0; i < input["segments"].length; i++) {
       int begin = max(0, input["segments"][i][0] * 16);
       int end = min(input["data"].length, input["segments"][i][1] * 16);
-      if(end - begin < 80){
+      if (end - begin < 80) {
         continue;
       }
-      maxSegmentLen = max(maxSegmentLen, end-begin);
+      maxSegmentLen = max(maxSegmentLen, end - begin);
 
       intDataAll.add(input["data"].sublist(begin, end));
     }
@@ -129,7 +136,7 @@ class SpeechRecognizer {
     int max_feats_len = 0;
     // padSequence(intDataAll, maxSegmentLen);
     List<List<Float32List>> floatData = [];
-    for(var i = 0; i<batch;i++){
+    for (var i = 0; i < batch; i++) {
       floatData.add(doubleList2FloatList(extractFbank(intDataAll[i])));
       feats_len.add(floatData.last.length);
       max_feats_len = max(max_feats_len, feats_len.last);
@@ -141,7 +148,7 @@ class SpeechRecognizer {
         floatData, [batch, axis1, axis2]);
 
     final lengthOrt = OrtValueTensor.createTensorWithDataList(
-        Int32List.fromList(List.generate(batch, (e) => axis1)), [batch]);
+        Int32List.fromList(feats_len), [batch]);
 
     final runOptions = OrtRunOptions();
     final inputs = {'speech': inputOrt, "speech_lengths": lengthOrt};
@@ -161,18 +168,24 @@ class SpeechRecognizer {
     runOptions.release();
 
     /// Output probability & update h,c recursively
-    List<List<List<double>>> logits = (outputs[0]?.value as List<List<List<double>>>);
+    List<List<List<double>>> logits =
+        (outputs[0]?.value as List<List<List<double>>>);
     // final toke_num = (outputs[1]?.value as List<double>)[0];
     List<List<double>> usAlphas = (outputs[2]?.value as List<List<double>>);
     List<List<double>> usCifPeak = (outputs[3]?.value as List<List<double>>);
 
-    Map result = {"char": [], "timestamp": [], "segments": List<int>.empty(growable: true)};
-    for(var i = 0; i< batch; i++){
+    Map result = {
+      "char": [],
+      "timestamp": [],
+      "segments": List<int>.empty(growable: true)
+    };
+    for (var i = 0; i < batch; i++) {
       List<String> charList = greedyDecode(logits[i]);
 
-      List<List<int>> timestamp = getTimeStamp(usAlphas[i], usCifPeak[i], charList);
+      List<List<int>> timestamp =
+          getTimeStamp(usAlphas[i], usCifPeak[i], charList);
       int idx = charList.indexOf("</s>");
-      if(idx != -1){
+      if (idx != -1) {
         charList = charList.sublist(0, idx);
         timestamp = timestamp.sublist(0, idx);
       }
@@ -238,7 +251,7 @@ class SpeechRecognizer {
     // final result = greedy_decode(output);
     // print(result);
     Map result = {};
-    if (charList.last == "</s>"){
+    if (charList.last == "</s>") {
       charList.removeLast();
     }
     result["char"] = charList;
@@ -249,37 +262,39 @@ class SpeechRecognizer {
     return result;
   }
 
-  puncByVAD(List<List<int>> segments, Map result ){
+  puncByVAD(List<List<int>> segments, Map result) {
     List<int> endMs = segments.map((e) => e[1]).toList();
     String decodeResult = "";
     int idx = 0;
-    if(result.keys.contains("segments")){
+    if (result.keys.contains("segments")) {
       List<int> seg = result["segments"];
       int b = 0;
-      for(var s in seg){
-        decodeResult += result["char"].sublist(b, b + s).join("");
+      for (var s in seg) {
+        decodeResult += result["char"].sublist(b, b + s).join(" ");
         decodeResult += "，";
         b += s;
       }
-      if(decodeResult.endsWith("，"))  decodeResult = decodeResult.substring(0, decodeResult.length-1);
+      if (decodeResult.endsWith("，")) {
+        decodeResult = decodeResult.substring(0, decodeResult.length - 1);
+      }
       decodeResult += "。";
       return decodeResult;
     }
-    if (result["char"].length != result["timestamp"].length){
+    if (result["char"].length != result["timestamp"].length) {
       decodeResult = result["char"].join(" ") + ".";
-    }else{
-      for (var i = 0; i < result["char"].length; i++){
+    } else {
+      for (var i = 0; i < result["char"].length; i++) {
         String char = result["char"][i];
         List<int> timestamp = result["timestamp"][i];
-        if (timestamp[1] < endMs[idx]){
+        if (timestamp[1] < endMs[idx]) {
           decodeResult += char;
-        }else if (timestamp[0] > endMs[idx]){
+        } else if (timestamp[0] > endMs[idx]) {
           decodeResult += "，$char";
-          idx ++;
-          if (idx == endMs.length){
+          idx++;
+          if (idx == endMs.length) {
             break;
           }
-        }else{
+        } else {
           decodeResult += char;
         }
       }

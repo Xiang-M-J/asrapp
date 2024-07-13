@@ -410,7 +410,7 @@ class AsrScreenState extends State<AsrScreen> {
                         try {
                           WavLoader wavloader = WavLoader();
                           final rawData =
-                              await rootBundle.load("assets/audio/test.wav");
+                              await rootBundle.load("assets/audio/asr_example.wav");
                           List<int> intData = List.empty(growable: true);
                           List<int> wavinfo = await wavloader.loadUint8List(rawData);
                           for (var i = wavinfo[0]; i < wavinfo[0]+wavinfo[1]; i += 2) {
