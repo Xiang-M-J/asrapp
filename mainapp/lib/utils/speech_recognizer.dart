@@ -105,12 +105,12 @@ class SpeechRecognizer {
     }
   }
 
-  Future<Map?> predictWithVADAsync(List<int> data, List<List<int>> segments) {
+  Future<Map<String, List>?> predictWithVADAsync(List<int> data, List<List<int>> segments) {
     Map input = {"data": data, "segments": segments};
     return compute(predictWithVAD, input);
   }
 
-  Map? predictWithVAD(Map input) {
+  Map<String, List>? predictWithVAD(Map input) {
     List<List<int>> intDataAll = [];
     int maxSegmentLen = 0;
     // Map sorted_segments = {};
@@ -174,7 +174,7 @@ class SpeechRecognizer {
     List<List<double>> usAlphas = (outputs[2]?.value as List<List<double>>);
     List<List<double>> usCifPeak = (outputs[3]?.value as List<List<double>>);
 
-    Map result = {
+    Map<String, List> result = {
       "char": [],
       "timestamp": [],
       "segments": List<int>.empty(growable: true)
@@ -190,9 +190,9 @@ class SpeechRecognizer {
         timestamp = timestamp.sublist(0, idx);
       }
 
-      result["char"].addAll(charList);
-      result["timestamp"].addAll(timestamp);
-      result["segments"].add(charList.length);
+      result["char"]?.addAll(charList);
+      result["timestamp"]?.addAll(timestamp);
+      result["segments"]?.add(charList.length);
     }
 
     for (var element in outputs) {
@@ -202,11 +202,11 @@ class SpeechRecognizer {
     return result;
   }
 
-  Future<Map?> predictAsync(List<int> data) {
+  Future<Map<String, List<dynamic>>?> predictAsync(List<int> data) {
     return compute(predict, data);
   }
 
-  Map? predict(List<int> intData) {
+  Map<String, List<dynamic>>? predict(List<int> intData) {
     List<List<double>> fbank = extractFbank(intData);
     int axis1 = fbank.length;
     int axis2 = fbank[0].length;
@@ -240,7 +240,7 @@ class SpeechRecognizer {
     final usAlphas = (outputs[2]?.value as List<List<double>>)[0];
     final usCifPeak = (outputs[3]?.value as List<List<double>>)[0];
 
-    final charList = greedyDecode(logits);
+    List<String> charList = greedyDecode(logits);
 
     List<List<int>> timestamp = getTimeStamp(usAlphas, usCifPeak, charList);
 
@@ -250,7 +250,7 @@ class SpeechRecognizer {
 
     // final result = greedy_decode(output);
     // print(result);
-    Map result = {};
+    Map<String, List<dynamic>> result = {};
     if (charList.last == "</s>") {
       charList.removeLast();
     }

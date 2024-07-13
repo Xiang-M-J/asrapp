@@ -206,6 +206,13 @@ class AsrScreenState extends State<AsrScreen> {
       await recordingDataSubscription!.cancel();
       recordingDataSubscription = null;
     }
+    if (_count < 1) {
+      showToastWrapper("说话时间太短了");
+      setState(() {
+        statusController.text = "";
+      });
+      return;
+    }
 
     setState(() {
       isRecognizing = true;
@@ -240,7 +247,7 @@ class AsrScreenState extends State<AsrScreen> {
       setState(() {
         statusController.text = "开始语音识别...";
       });
-      Map? result;
+      Map<String, List<dynamic>>? result;
       if (useVAD && segments!.isNotEmpty) {
         result = await speechRecognizer?.predictWithVADAsync(intData, segments);
       } else {
@@ -251,7 +258,7 @@ class AsrScreenState extends State<AsrScreen> {
         if (useVAD) {
           recognizeResult = speechRecognizer?.puncByVAD(segments!, result);
         } else {
-          recognizeResult = result["char"].join(" ") + "。";
+          recognizeResult = "${result["char"]?.join(" ")}。";
         }
       } else {
         recognizeResult = null;
@@ -272,9 +279,6 @@ class AsrScreenState extends State<AsrScreen> {
   hideVoiceView() {
     if (isRecognizing) return;
     if (_timer!.isActive) {
-      if (_count < 1) {
-        showToastWrapper("说话时间太短了");
-      }
       _timer?.cancel();
     }
 
