@@ -8,15 +8,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:mainapp/pages/show_toasts.dart';
-import 'package:mainapp/utils/audioloader.dart';
+import 'package:mainapp/utils/audio_loader.dart';
+import 'package:mainapp/utils/ernie_punctuation.dart';
 import 'package:mainapp/utils/fsmnvad_dector.dart';
 import 'package:mainapp/utils/ort_env_utils.dart';
 import 'package:mainapp/utils/sound_utils.dart';
 import 'package:mainapp/utils/speech_recognizer.dart';
 import 'package:mainapp/utils/type_converter.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:uuid/uuid.dart';
 import 'package:file_selector/file_selector.dart';
 
 void main() {
@@ -46,7 +45,8 @@ class AsrScreen extends StatefulWidget {
   AsrScreenState createState() => AsrScreenState();
 }
 
-class AsrScreenState extends State<AsrScreen> {
+class AsrScreenState extends State<AsrScreen>
+    with SingleTickerProviderStateMixin {
   // String _recordFilePath;
   final TextEditingController resultController = TextEditingController();
   final TextEditingController statusController = TextEditingController();
@@ -70,11 +70,12 @@ class AsrScreenState extends State<AsrScreen> {
   String? audioPath;
   StreamSubscription? recordingDataSubscription;
   bool mRecorderIsInitialed = false;
-  var uuid = const Uuid();
-  List<String> tempNames = List.empty(growable: true);
+
+  List<String> tempAudioPaths = List.empty(growable: true);
 
   SpeechRecognizer? speechRecognizer;
   FsmnVaDetector? vaDetector;
+  ErniePunctuation? erniePunctuation;
 
   static const sampleRate = 16000;
 
@@ -84,6 +85,12 @@ class AsrScreenState extends State<AsrScreen> {
 
   String? recognizeResult;
   bool useVAD = false;
+  bool usePunc = false;
+
+  int green = 50;
+  int blue = 100;
+
+  Timer? _colorTimer;
 
   @override
   void initState() {
@@ -96,7 +103,12 @@ class AsrScreenState extends State<AsrScreen> {
     initOrtEnv();
     speechRecognizer = SpeechRecognizer();
     vaDetector = FsmnVaDetector();
-    speechRecognizer?.initModel();
+    erniePunctuation = ErniePunctuation();
+    initModel();
+  }
+
+  void initModel() async {
+    await speechRecognizer?.initModel();
     setState(() {
       statusController.text = "语音识别模型已加载";
       isSRModelInitialed = true;
@@ -134,7 +146,7 @@ class AsrScreenState extends State<AsrScreen> {
   }
 
   Future<void> deleteFiles() async {
-    for (var tempName in tempNames) {
+    for (var tempName in tempAudioPaths) {
       var file = File(tempName);
       if (file.existsSync()) {
         file.deleteSync();
@@ -147,6 +159,7 @@ class AsrScreenState extends State<AsrScreen> {
     resultController.dispose();
     statusController.dispose();
     _timer?.cancel();
+    _colorTimer?.cancel();
     mRecorder!.closeRecorder();
     mRecorder = null;
     mPlayer!.closePlayer();
@@ -164,12 +177,9 @@ class AsrScreenState extends State<AsrScreen> {
   }
 
   Future<IOSink> createFile() async {
-    var tempDir = await getTemporaryDirectory();
-
-    String tempName = uuid.v4();
-    audioPath = '${tempDir.path}/$tempName.pcm';
-    tempNames.add(audioPath!);
-    var outputFile = File(audioPath!);
+    String audioPath = await getTemporaryAudioPath("pcm");
+    tempAudioPaths.add(audioPath);
+    var outputFile = File(audioPath);
     if (outputFile.existsSync()) {
       await outputFile.delete();
     }
@@ -230,42 +240,51 @@ class AsrScreenState extends State<AsrScreen> {
 
   // 进行推理，包括 VAD 和语音识别
   inference(List<int> intData) async {
-    List<List<int>>? segments;
-    if (useVAD && vaDetector!.isInitialed) {
-      setState(() {
-        statusController.text = "正在获取VAD结果";
-      });
-      segments = await vaDetector?.predict(intData);
-    }
-    if ((useVAD && segments == null) || (useVAD && segments!.isEmpty)) {
-      showToastWrapper("似乎没有检测到语音");
-      setState(() {
-        statusController.text = "识别完成";
-        recognizeResult = "";
-      });
-    } else {
-      setState(() {
-        statusController.text = "开始语音识别...";
-      });
-      Map<String, List<dynamic>>? result;
-      if (useVAD && segments!.isNotEmpty) {
-        result = await speechRecognizer?.predictWithVADAsync(intData, segments);
-      } else {
-        result = await speechRecognizer?.predictAsync(intData);
+    try {
+      List<List<int>>? segments;
+      if (useVAD && vaDetector!.isInitialed) {
+        setState(() {
+          statusController.text = "正在获取VAD结果";
+        });
+        segments = await vaDetector?.predict(intData);
       }
-
-      if (result != null) {
-        if (useVAD) {
-          recognizeResult = speechRecognizer?.puncByVAD(segments!, result);
+      if ((useVAD && segments == null) || (useVAD && segments!.isEmpty)) {
+        showToastWrapper("似乎没有检测到语音");
+        setState(() {
+          statusController.text = "识别完成";
+          recognizeResult = "";
+        });
+      } else {
+        setState(() {
+          statusController.text = "开始语音识别...";
+        });
+        Map<String, List<dynamic>>? result;
+        if (useVAD && segments!.isNotEmpty) {
+          result =
+              await speechRecognizer?.predictWithVADAsync(intData, segments);
         } else {
-          recognizeResult = "${result["char"]?.join(" ")}。";
+          result = await speechRecognizer?.predictAsync(intData);
         }
-      } else {
-        recognizeResult = null;
+
+        if (result != null) {
+
+          if(usePunc && erniePunctuation!.isInitialed){
+            recognizeResult = await erniePunctuation?.predictAsync(result["char"] as List<String>);
+          }else if (useVAD && !usePunc){
+            recognizeResult = speechRecognizer?.puncByVAD(segments!, result);
+          }
+          else  {
+            recognizeResult = "${result["char"]?.join(" ")}。";
+          }
+        } else {
+          recognizeResult = null;
+        }
       }
+      resultController.text = recognizeResult ?? "未识别到结果";
+      speechRecognizer?.reset();
+    } catch (e) {
+      resultController.text = e.toString();
     }
-    resultController.text = recognizeResult ?? "未识别到结果";
-    speechRecognizer?.reset();
   }
 
   showVoiceView() {
@@ -281,8 +300,13 @@ class AsrScreenState extends State<AsrScreen> {
     if (_timer!.isActive) {
       _timer?.cancel();
     }
+    if (_colorTimer!.isActive) {
+      _colorTimer?.cancel();
+    }
 
     setState(() {
+      blue = 100;
+      green = 50;
       textShow = "按住说话";
       voiceState = true;
       isRecording = false;
@@ -319,7 +343,8 @@ class AsrScreenState extends State<AsrScreen> {
                 style: const TextStyle(color: Colors.grey),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey, width: 2),
+                    borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+                    borderSide: BorderSide(color: Colors.grey, width: 8),
                   ),
                 ),
                 maxLines: 1,
@@ -350,6 +375,10 @@ class AsrScreenState extends State<AsrScreen> {
             GestureDetector(
               onLongPressStart: isSRModelInitialed
                   ? (details) {
+                      if (!isSRModelInitialed) {
+                        showToastWrapper("正在初始化模型");
+                        return;
+                      }
                       if (isRecognizing) {
                         showToastWrapper("正在识别，请稍等");
                         return;
@@ -370,6 +399,19 @@ class AsrScreenState extends State<AsrScreen> {
                           hideVoiceView();
                         }
                       });
+                      _colorTimer =
+                          Timer.periodic(const Duration(milliseconds: 25), (t) {
+                        setState(() {
+                          blue += 2;
+                          green += 2;
+                          if (blue >= 200) {
+                            blue = 100;
+                          }
+                          if (green >= 200) {
+                            green = 50;
+                          }
+                        });
+                      });
                     }
                   : null,
               onLongPressEnd: isSRModelInitialed
@@ -378,13 +420,14 @@ class AsrScreenState extends State<AsrScreen> {
                     }
                   : null,
               child: Container(
-                height: 100,
-                width: 100,
+                height: 128,
+                width: 128,
 
                 decoration: BoxDecoration(
                   color: Colors.blueAccent,
-                  borderRadius: BorderRadius.circular(50),
-                  border: Border.all(width: 5.0, color: Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(64),
+                  border: Border.all(
+                      width: 12.0, color: Color.fromARGB(200, 20, green, blue)),
                 ),
 
                 // margin: const EdgeInsets.fromLTRB(50, 0, 50, 20),
@@ -406,27 +449,57 @@ class AsrScreenState extends State<AsrScreen> {
                           showToastWrapper("正在识别,请稍等");
                           return;
                         }
+                        var status = await Permission.storage.request();
+                        if (status != PermissionStatus.granted) {
+                          showToastWrapper("未授予访问本地文件的权限");
+                          return;
+                        }
+                        const XTypeGroup typeGroup = XTypeGroup(
+                          label: 'images',
+                          extensions: <String>['m4a', 'mp3', ".wav"],
+                        );
+                        final XFile? file = await openFile(
+                            acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+                        if (file == null) {
+                          return;
+                        }
+                        String? newPath;
+                        if (!file.path.endsWith("wav")) {
+                          newPath = await audioTransformUtils(file.path);
+                          if (newPath == null) {
+                            return;
+                          } else {
+                            tempAudioPaths.add(newPath);
+                          }
+                        }
+                        else{
+                          newPath = file.path;
+                        }
                         setState(() {
                           isRecognizing = true;
                           statusController.text = "正在识别...";
                         });
-                        // playRemindSound();
+                        // File newFile = File(newPath!);
                         try {
-                          WavLoader wavloader = WavLoader();
-                          final rawData =
-                              await rootBundle.load("assets/audio/asr_example.wav");
+                          WavLoader wavLoader = WavLoader();
+                          // final rawData = await rootBundle
+                          //     .load("assets/audio/asr_example.wav");
+                          // List<int> intData = List.empty(growable: true);
+                          // List<int> wavInfo =
+                          //     await wavLoader.loadByteData(rawData);
+                          // for (var i = wavInfo[0];
+                          //     i < wavInfo[0] + wavInfo[1];
+                          //     i += 2) {
+                          //   intData.add(
+                          //       rawData.getInt16(i, Endian.little).toInt());
+                          // }
+
+                          ByteData rawData = await wavLoader.load(newPath);
                           List<int> intData = List.empty(growable: true);
-                          List<int> wavinfo = await wavloader.loadUint8List(rawData);
-                          for (var i = wavinfo[0]; i < wavinfo[0]+wavinfo[1]; i += 2) {
+                          for (var i = 0; i < rawData.lengthInBytes; i += 2) {
                             intData.add(
                                 rawData.getInt16(i, Endian.little).toInt());
                           }
-                          // WavLoader wavLoader = WavLoader();
-                          // ByteData rawData = await wavLoader.load("assets/audio/test.wav");
-                          // List<int> intData = List.empty(growable: true);
-                          // for(var i = 0; i< rawData.lengthInBytes; i+=2){
-                          //   intData.add(rawData.getInt16(i, Endian.little).toInt());
-                          // }
 
                           await inference(intData);
                         } catch (e) {
@@ -457,72 +530,85 @@ class AsrScreenState extends State<AsrScreen> {
                 maxLines: 10,
               ),
             ),
+            const SizedBox(
+              height: 20,
+            ),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                const Padding(
-                  padding:
-                      EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 0),
-                  child: Text(
-                    "是否使用VAD",
-                    style: TextStyle(fontSize: 16),
-                  ),
+                Row(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(
+                          left: 10, top: 10, right: 10, bottom: 0),
+                      child: Text(
+                        "是否使用VAD",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                    Padding(
+                        padding: const EdgeInsets.only(
+                            left: 0, top: 10, right: 0, bottom: 0),
+                        child: Switch(
+                            value: useVAD,
+                            activeColor: Colors.blue,
+                            // inactiveThumbColor: Colors.black,
+                            onChanged: (value) {
+                              if (!isSRModelInitialed) {
+                                showToastWrapper("正在初始化语音识别模型");
+                                return;
+                              }
+                              setState(() {
+                                useVAD = value;
+                              });
+                              if (!vaDetector!.isInitialed) {
+                                setState(() {
+                                  statusController.text = "正在加载VAD模型";
+                                });
+                                vaDetector
+                                    ?.initModel("assets/models/fsmn_vad.onnx");
+                                setState(() {
+                                  statusController.text = "已加载VAD模型";
+                                });
+                              }
+                            })),
+                  ],
                 ),
-                Padding(
-                    padding: const EdgeInsets.only(
-                        left: 0, top: 10, right: 0, bottom: 0),
-                    child: Switch(
-                        value: useVAD,
-                        activeColor: Colors.blue,
-                        // inactiveThumbColor: Colors.black,
-                        onChanged: (value) {
-                          if(!isSRModelInitialed){
-                            showToastWrapper("正在初始化语音识别模型");
-                            return;
-                          }
-                          setState(() {
-                            useVAD = value;
-                          });
-                          if (!vaDetector!.isInitialed) {
-                            setState(() {
-                              statusController.text = "正在加载VAD模型";
-                            });
-                            vaDetector
-                                ?.initModel("assets/models/fsmn_vad.onnx");
-                            setState(() {
-                              statusController.text = "已加载VAD模型";
-                            });
-                          }
-                        })),
-                // const Padding(
-                //   padding:
-                //   EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 0),
-                //   child: Text(
-                //     "",
-                //     style: TextStyle(fontSize: 16),
-                //   ),
-                // ),
-                // Padding(
-                //     padding: const EdgeInsets.only(
-                //         left: 0, top: 10, right: 0, bottom: 0),
-                //     child: Switch(
-                //         value: useVAD,
-                //         activeColor: Colors.blue,
-                //         // inactiveThumbColor: Colors.black,
-                //         onChanged: (value) {
-                //           setState(() {
-                //             useVAD = value;
-                //           });
-                //           if (!vaDetector!.isInitialed) {
-                //             setState(() {
-                //               statusController.text = "正在加载VAD模型";
-                //             });
-                //             vaDetector
-                //                 ?.initModel("assets/models/fsmn_vad.onnx");
-                //             setState(() {
-                //               statusController.text = "已加载VAD模型";
-                //             });
-                //           }
-                //         })),
+                Row(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(
+                          left: 10, top: 10, right: 10, bottom: 0),
+                      child: Text(
+                        "使用标点模型",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                    Padding(
+                        padding: const EdgeInsets.only(
+                            left: 0, top: 10, right: 0, bottom: 0),
+                        child: Switch(
+                            value: usePunc,
+                            activeColor: Colors.blue,
+                            // inactiveThumbColor: Colors.black,
+                            onChanged: (value) async {
+                              setState(() {
+                                usePunc = value;
+                              });
+
+                              if (!erniePunctuation!.isInitialed) {
+                                setState(() {
+                                  statusController.text = "正在加载Punc模型";
+                                });
+                                await erniePunctuation?.initVocab();
+                                await erniePunctuation?.initModel();
+                                setState(() {
+                                  statusController.text = "已加载Punc模型";
+                                });
+                              }
+                            })),
+                  ],
+                )
               ],
             )
           ],

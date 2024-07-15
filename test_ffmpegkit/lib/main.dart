@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter/return_code.dart';
 import 'package:flutter/material.dart';
@@ -46,37 +49,41 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
 
-  void _incrementCounter() {
-    setState(() async {
-      const XTypeGroup typeGroup = XTypeGroup(
-        label: 'images',
-        extensions: <String>['m4a', 'pcm', ".wav"],
-      );
-      final XFile? file =
-          await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
-      // var binData = await rootBundle.load(file!.path);
-      if (file == null) {
-        return;
+  Future<void> _incrementCounter() async {
+    const XTypeGroup typeGroup = XTypeGroup(
+      label: 'images',
+      extensions: <String>['m4a', 'pcm', ".wav"],
+    );
+    final XFile? file =
+        await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+    // var binData = await rootBundle.load(file!.path);
+    if (file == null) {
+      return;
+    }
+    var tempDir = await getTemporaryDirectory();
+
+    String audioPath = '${tempDir.path}/ouput.wav';
+    await FFmpegKit.execute(
+        '-i ${file.path} -ar 16000 -ab 32k -ac 1 $audioPath')
+        .then((session) async {
+      final returnCode = await session.getReturnCode();
+
+      if (ReturnCode.isSuccess(returnCode)) {
+        // SUCCESS
+        print("success");
+      } else if (ReturnCode.isCancel(returnCode)) {
+        // CANCEL
+        print("cancel");
+      } else {
+        // ERROR
+        // print(session.toString());
+        print("error");
       }
-      var tempDir = await getTemporaryDirectory();
-
-      String audioPath = '${tempDir.path}/ouput.wav';
-      FFmpegKit.execute(
-              'ffmpeg -i ${file.path} -ar 16000 -ab 32k -ac 1 $audioPath')
-          .then((session) async {
-        final returnCode = await session.getReturnCode();
-
-        if (ReturnCode.isSuccess(returnCode)) {
-          // SUCCESS
-          print("success");
-        } else if (ReturnCode.isCancel(returnCode)) {
-          // CANCEL
-        } else {
-          // ERROR
-        }
-      });
-      _counter++;
     });
+    File nfile = File(audioPath);
+    Uint8List data = await nfile.readAsBytes();
+    bool isexist = await nfile.exists();
+    print(isexist);
   }
 
   @override

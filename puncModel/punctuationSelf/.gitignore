@@ -1,0 +1,7 @@
+.idea/
+dataset/
+models/
+log/
+test.py
+ernie-3.0-nano-zh
+ernie-3.0-medium-zh

@@ -832,4 +832,3 @@ class FsmnVaDetector {
     return segments;
   }
 }
-

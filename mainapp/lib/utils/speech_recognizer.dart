@@ -17,7 +17,7 @@ class SpeechRecognizer {
   static const int _batch = 1;
 
   Tokenizer tokenizer = Tokenizer();
-  SpeechRecognizer() {}
+  SpeechRecognizer();
 
   reset() {}
 

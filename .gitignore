@@ -25,3 +25,5 @@ mainapp/.idea
 mainapp/build
 flutter_plugin_record
 FunASR-main
+*.pt
+*.log

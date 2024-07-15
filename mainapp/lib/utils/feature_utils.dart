@@ -3,7 +3,20 @@ import 'dart:ffi';
 import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
 
+// https://blog.csdn.net/eieihihi/article/details/119219348
 
+final class Cache extends Struct {
+  external Pointer<Float> reserve_waveforms;
+
+  external Pointer<Float> input_cache;
+  external Pointer<Float> lfr_splice_cache;
+
+  external Pointer<Float> waveforms;
+  external Pointer<Float> fbanks;
+  external Pointer<Float> fbanks_len;
+}
+
+// 语音唤醒、语音识别改为开关、实时识别
 
 final DynamicLibrary fbankLib = Platform.isAndroid
     ? DynamicLibrary.open("libFbank.so")

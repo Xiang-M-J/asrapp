@@ -357,7 +357,7 @@ class WavFrontendOnline(nn.Module):
                     num_mel_bins=self.n_mels,
                     frame_length=self.frame_length,
                     frame_shift=self.frame_shift,
-                    dither=self.dither,
+                    dither=0.0,
                     energy_floor=0.0,
                     window_type=self.window,
                     sample_frequency=self.fs,
