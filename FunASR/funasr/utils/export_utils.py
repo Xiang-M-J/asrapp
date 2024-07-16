@@ -49,13 +49,17 @@ def _onnx(
     export_dir: str = None,
     **kwargs,
 ):
-
+    do_constant_folding = kwargs.get("do_constant_folding", True)
+    keep_initializers_as_inputs = kwargs.get("keep_initializers_as_inputs", None)
+    export_modules_as_functions = kwargs.get("export_modules_as_functions", False)
     dummy_input = model.export_dummy_inputs()
 
     verbose = kwargs.get("verbose", False)
 
-    export_name = model.export_name + ".onnx"
+    export_name = model.export_name()
     model_path = os.path.join(export_dir, export_name)
+    if export_modules_as_functions:
+        opset_version = 16
     torch.onnx.export(
         model,
         dummy_input,
@@ -65,6 +69,8 @@ def _onnx(
         input_names=model.export_input_names(),
         output_names=model.export_output_names(),
         dynamic_axes=model.export_dynamic_axes(),
+        do_constant_folding=do_constant_folding, keep_initializers_as_inputs=keep_initializers_as_inputs,
+        export_modules_as_functions=export_modules_as_functions,
     )
 
     if quantize:

@@ -43,15 +43,15 @@ from funasr.register import tables
 
 class EncoderLayerSANM(nn.Module):
     def __init__(
-        self,
-        in_size,
-        size,
-        self_attn,
-        feed_forward,
-        dropout_rate,
-        normalize_before=True,
-        concat_after=False,
-        stochastic_depth_rate=0.0,
+            self,
+            in_size,
+            size,
+            self_attn,
+            feed_forward,
+            dropout_rate,
+            normalize_before=True,
+            concat_after=False,
+            stochastic_depth_rate=0.0,
     ):
         """Construct an EncoderLayer object."""
         super(EncoderLayerSANM, self).__init__()
@@ -193,34 +193,34 @@ class SANMEncoderChunkOpt(nn.Module):
     """
 
     def __init__(
-        self,
-        input_size: int,
-        output_size: int = 256,
-        attention_heads: int = 4,
-        linear_units: int = 2048,
-        num_blocks: int = 6,
-        dropout_rate: float = 0.1,
-        positional_dropout_rate: float = 0.1,
-        attention_dropout_rate: float = 0.0,
-        input_layer: Optional[str] = "conv2d",
-        pos_enc_class=SinusoidalPositionEncoder,
-        normalize_before: bool = True,
-        concat_after: bool = False,
-        positionwise_layer_type: str = "linear",
-        positionwise_conv_kernel_size: int = 1,
-        padding_idx: int = -1,
-        interctc_layer_idx: List[int] = [],
-        interctc_use_conditioning: bool = False,
-        kernel_size: int = 11,
-        sanm_shfit: int = 0,
-        selfattention_layer_type: str = "sanm",
-        chunk_size: Union[int, Sequence[int]] = (16,),
-        stride: Union[int, Sequence[int]] = (10,),
-        pad_left: Union[int, Sequence[int]] = (0,),
-        encoder_att_look_back_factor: Union[int, Sequence[int]] = (1,),
-        decoder_att_look_back_factor: Union[int, Sequence[int]] = (1,),
-        tf2torch_tensor_name_prefix_torch: str = "encoder",
-        tf2torch_tensor_name_prefix_tf: str = "seq2seq/encoder",
+            self,
+            input_size: int,
+            output_size: int = 256,
+            attention_heads: int = 4,
+            linear_units: int = 2048,
+            num_blocks: int = 6,
+            dropout_rate: float = 0.1,
+            positional_dropout_rate: float = 0.1,
+            attention_dropout_rate: float = 0.0,
+            input_layer: Optional[str] = "conv2d",
+            pos_enc_class=SinusoidalPositionEncoder,
+            normalize_before: bool = True,
+            concat_after: bool = False,
+            positionwise_layer_type: str = "linear",
+            positionwise_conv_kernel_size: int = 1,
+            padding_idx: int = -1,
+            interctc_layer_idx: List[int] = [],
+            interctc_use_conditioning: bool = False,
+            kernel_size: int = 11,
+            sanm_shfit: int = 0,
+            selfattention_layer_type: str = "sanm",
+            chunk_size: Union[int, Sequence[int]] = (16,),
+            stride: Union[int, Sequence[int]] = (10,),
+            pad_left: Union[int, Sequence[int]] = (0,),
+            encoder_att_look_back_factor: Union[int, Sequence[int]] = (1,),
+            decoder_att_look_back_factor: Union[int, Sequence[int]] = (1,),
+            tf2torch_tensor_name_prefix_torch: str = "encoder",
+            tf2torch_tensor_name_prefix_tf: str = "seq2seq/encoder",
     ):
         super().__init__()
         self._output_size = output_size
@@ -359,12 +359,12 @@ class SANMEncoderChunkOpt(nn.Module):
         return self._output_size
 
     def forward(
-        self,
-        xs_pad: torch.Tensor,
-        ilens: torch.Tensor,
-        prev_states: torch.Tensor = None,
-        ctc: CTC = None,
-        ind: int = 0,
+            self,
+            xs_pad: torch.Tensor,
+            ilens: torch.Tensor,
+            prev_states: torch.Tensor = None,
+            ctc: CTC = None,
+            ind: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Embed positions in tensor.
 
@@ -380,10 +380,10 @@ class SANMEncoderChunkOpt(nn.Module):
         if self.embed is None:
             xs_pad = xs_pad
         elif (
-            isinstance(self.embed, Conv2dSubsampling)
-            or isinstance(self.embed, Conv2dSubsampling2)
-            or isinstance(self.embed, Conv2dSubsampling6)
-            or isinstance(self.embed, Conv2dSubsampling8)
+                isinstance(self.embed, Conv2dSubsampling)
+                or isinstance(self.embed, Conv2dSubsampling2)
+                or isinstance(self.embed, Conv2dSubsampling6)
+                or isinstance(self.embed, Conv2dSubsampling8)
         ):
             short_status, limit_size = check_short_utt(self.embed, xs_pad.size(1))
             if short_status:
@@ -450,15 +450,15 @@ class SANMEncoderChunkOpt(nn.Module):
             return feats
         cache["feats"] = to_device(cache["feats"], device=feats.device)
         overlap_feats = torch.cat((cache["feats"], feats), dim=1)
-        cache["feats"] = overlap_feats[:, -(cache["chunk_size"][0] + cache["chunk_size"][2]) :, :]
+        cache["feats"] = overlap_feats[:, -(cache["chunk_size"][0] + cache["chunk_size"][2]):, :]
         return overlap_feats
 
     def forward_chunk(
-        self,
-        xs_pad: torch.Tensor,
-        ilens: torch.Tensor,
-        cache: dict = None,
-        **kwargs,
+            self,
+            xs_pad: torch.Tensor,
+            ilens: torch.Tensor,
+            cache: dict = None,
+            **kwargs,
     ):
         is_final = kwargs.get("is_final", False)
         xs_pad *= self.output_size() ** 0.5
@@ -475,6 +475,49 @@ class SANMEncoderChunkOpt(nn.Module):
             new_cache = [None] * cache_layer_num
         else:
             new_cache = cache["opt"]
+
+        for layer_idx, encoder_layer in enumerate(self.encoders0):
+            encoder_outs = encoder_layer.forward_chunk(
+                xs_pad, new_cache[layer_idx], cache["chunk_size"], cache["encoder_chunk_look_back"]
+            )
+            xs_pad, new_cache[0] = encoder_outs[0], encoder_outs[1]
+
+        for layer_idx, encoder_layer in enumerate(self.encoders):
+            encoder_outs = encoder_layer.forward_chunk(
+                xs_pad,
+                new_cache[layer_idx + len(self.encoders0)],
+                cache["chunk_size"],
+                cache["encoder_chunk_look_back"],
+            )
+            xs_pad, new_cache[layer_idx + len(self.encoders0)] = encoder_outs[0], encoder_outs[1]
+
+        if self.normalize_before:
+            xs_pad = self.after_norm(xs_pad)
+        if cache["encoder_chunk_look_back"] > 0 or cache["encoder_chunk_look_back"] == -1:
+            cache["opt"] = new_cache
+
+        return xs_pad, ilens, None
+
+    def forward_chunk_export(
+            self,
+            xs_pad: torch.Tensor,
+            ilens: torch.Tensor,
+            cache: dict = None,
+    ):
+        xs_pad *= self.output_size() ** 0.5
+        if self.embed is None:
+            xs_pad = xs_pad
+        else:
+            xs_pad = self.embed(xs_pad, cache)
+        # if cache["tail_chunk"]:
+        #     xs_pad = to_device(cache["feats"], device=xs_pad.device)
+        # else:
+        xs_pad = self._add_overlap_chunk(xs_pad, cache)
+        # if cache["init_opt"]:
+        #     new_cache = cache["opt"]
+        # else:
+        cache_layer_num = len(self.encoders0) + len(self.encoders)
+        new_cache = [None] * cache_layer_num
 
         for layer_idx, encoder_layer in enumerate(self.encoders0):
             encoder_outs = encoder_layer.forward_chunk(

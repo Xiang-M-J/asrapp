@@ -26,7 +26,7 @@ typedef struct {
 
 void WavFrontend(float* s, float** o, int sampleNum);
 
-void WavFrontendOnline(float* s, float** o, int sampleNum);
+void WavFrontendOnline(float* s, float** o, int sampleNum, int is_final);
 
 float random_gaussian();
 
@@ -39,7 +39,7 @@ void SubtractColumnMean(float** data, int axis1, int axis2);
 
 void apply_lfr(float** data, float** output, int lfr_m, int lfr_n, int m, int bankNum);
 
-void apply_lfr_online(float** data, float** output, int lfr_m, int lfr_n, int m, int bankNum);
+void apply_lfr_online(float** data, float** output, int lfr_m, int lfr_n, int m, int bankNum, int is_final);
 
 float** create2dVector(int axis1, int axis2);
 

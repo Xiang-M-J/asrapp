@@ -458,6 +458,56 @@ class ParaformerSANMDecoder(BaseTransformerDecoder):
         attn_mat = self.decoders[5].get_attn_mat(tgt, tgt_mask, memory, memory_mask)
         return attn_mat
 
+    def forward_chunk_export(
+        self,
+        memory: torch.Tensor,
+        tgt: torch.Tensor,
+        cache: dict = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        x = tgt
+        # if cache["init_fsmn"]:
+        #     fsmn_cache = cache["decode_fsmn"]
+        # else:
+        cache_layer_num = len(self.decoders)
+        fsmn_cache = [None] * cache_layer_num
+
+        # if cache["init_opt"]:
+        #     opt_cache = cache["opt"]
+        # else:
+        cache_layer_num = len(self.decoders)
+        opt_cache = [None] * cache_layer_num
+
+        for i in range(self.att_layer_num):
+            decoder = self.decoders[i]
+            x, memory, fsmn_cache[i], opt_cache[i] = decoder.forward_chunk(
+                x,
+                memory,
+                fsmn_cache=fsmn_cache[i],
+                opt_cache=opt_cache[i],
+                chunk_size=cache["chunk_size"],
+                look_back=cache["decoder_chunk_look_back"],
+            )
+
+        if self.num_blocks - self.att_layer_num > 1:
+            for i in range(self.num_blocks - self.att_layer_num):
+                j = i + self.att_layer_num
+                decoder = self.decoders2[i]
+                x, memory, fsmn_cache[j], _ = decoder.forward_chunk(
+                    x, memory, fsmn_cache=fsmn_cache[j]
+                )
+
+        for decoder in self.decoders3:
+            x, memory, _, _ = decoder.forward_chunk(x, memory)
+        if self.normalize_before:
+            x = self.after_norm(x)
+        if self.output_layer is not None:
+            x = self.output_layer(x)
+
+        cache["decode_fsmn"] = fsmn_cache
+        if cache["decoder_chunk_look_back"] > 0 or cache["decoder_chunk_look_back"] == -1:
+            cache["opt"] = opt_cache
+        return x
+
     def forward_chunk(
         self,
         memory: torch.Tensor,

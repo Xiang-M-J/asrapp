@@ -146,20 +146,20 @@ void test_gassuian() {
 void test_wave2fbank() {
 	float* waveform;
 	float** output = NULL;
-	int bankNum = 80;
-	int sampleNum = 208832;
-	int lfr_m = 5, lfr_n = 1;
+	int bankNum = 8;
+	int sampleNum = 1600;
+	int lfr_m = 7, lfr_n = 6;
 	int m = 1 + (sampleNum - 400) / 160;
 	int m_lfm = (int)((lfr_m - 1) / 2);
-	int axis1 = (int)ceil(m + m_lfm - (int)((lfr_m - 1) / 2) / (lfr_n * 1.0));
+	int axis1 = (int)ceil(m / (lfr_n * 1.0));
 	waveform = (float*)malloc(sizeof(float) * (sampleNum));
 	output = create2dVector(axis1, bankNum * lfr_m);
 	for (int i = 0; i < sampleNum; i++)
 	{
 		waveform[i] = 100 * (sin(0.01 * i));
 	}
-	
-	WavFrontendOnline(waveform, output, sampleNum);
+	// 最小为 800 点，即 20 ms
+	WavFrontend(waveform, output, sampleNum);
 
 	for (size_t i = 0; i < axis1; i++)
 	{
@@ -172,7 +172,7 @@ void test_wave2fbank() {
 	
 
 	free(waveform);
-	free2dVector(output, 3);
+	free2dVector(output, axis1);
 	return;
 }
 

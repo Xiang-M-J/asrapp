@@ -9,20 +9,26 @@ from funasr.register import tables
 
 
 def export_rebuild_model(model, **kwargs):
-    model.device = kwargs.get("device")
-    is_onnx = kwargs.get("type", "onnx") == "onnx"
-    encoder_class = tables.encoder_classes.get(kwargs["encoder"] + "Export")
-    model.encoder = encoder_class(model.encoder, onnx=is_onnx)
+    model.device = "cpu"
+    is_onnx = "onnx"
+    # model_conf = {'ctc_weight': 0.0, 'length_normalized_loss': True, 'lsm_weight': 0.1, 'predictor_bias': 1, 'predictor_weight': 1.0,
+    #  'sampling_ratio': 0.75}
+    # specaug_conf = {'apply_freq_mask': True, 'apply_time_mask': True, 'apply_time_warp': False, 'freq_mask_width_range': [0, 30],
+    #  'lfr_rate': 6, 'num_freq_mask': 1, 'num_time_mask': 1, 'time_mask_width_range': [0, 12],
+    #  'time_warp_mode': 'bicubic', 'time_warp_window': 5}
+    # decoder_conf = {'att_layer_num': 16, 'attention_heads': 4, 'dropout_rate': 0.1, 'kernel_size': 11, 'linear_units': 2048, 'num_blocks': 16, 'positional_dropout_rate': 0.1, 'sanm_shfit': 5, 'self_attention_dropout_rate': 0.1, 'src_attention_dropout_rate': 0.1}
+    # predictor_conf = {'idim': 512, 'l_order': 1, 'r_order': 1, 'tail_threshold': 0.45, 'threshold': 1.0}
+    # encoder_class = tables.encoder_classes.get(kwargs["encoder"])
+    # model.encoder = encoder_class(model.encoder, onnx=is_onnx)
+    #
+    # predictor_class = tables.predictor_classes.get(kwargs["predictor"])
+    # model.predictor = predictor_class(model.predictor, onnx=is_onnx)
+    # decoder_class = tables.decoder_classes.get(kwargs["decoder"])
+    # model.decoder = decoder_class(model.decoder, onnx=is_onnx)
 
-    predictor_class = tables.predictor_classes.get(kwargs["predictor"] + "Export")
-    model.predictor = predictor_class(model.predictor, onnx=is_onnx)
-
-    decoder_class = tables.decoder_classes.get(kwargs["decoder"] + "Export")
-    model.decoder = decoder_class(model.decoder, onnx=is_onnx)
-
-    from funasr.utils.torch_function import sequence_mask
-
-    model.make_pad_mask = sequence_mask(kwargs["max_seq_len"], flip=False)
+    # from funasr.utils.torch_function import sequence_mask
+    #
+    # model.make_pad_mask = sequence_mask(kwargs["max_seq_len"], flip=False)
 
     model.forward = types.MethodType(export_forward, model)
     model.export_dummy_inputs = types.MethodType(export_dummy_inputs, model)
@@ -35,36 +41,57 @@ def export_rebuild_model(model, **kwargs):
 
 
 def export_forward(self, speech: torch.Tensor,
-                   speech_lengths: torch.Tensor, ):
+                   speech_lengths: torch.Tensor, feats, cif_hidden, cif_alphas):
 
-    pass
-
-
-def export_dummy_inputs():
-    speech = torch.randn(2, 30, 560)
-    speech_lengths = torch.tensor([6, 30], dtype=torch.int32)
-    return speech, speech_lengths
+    return self.forward_export(speech, speech_lengths, feats, cif_hidden, cif_alphas)
 
 
-def export_input_names():
-    return ["speech", "speech_lengths"]
+def export_dummy_inputs(self):
+    speech = torch.randn(1, 10, 560)
+    speech_lengths = torch.tensor([10], dtype=torch.int32)
+    feats = torch.zeros(1, 5, 560)
+    cif_hidden = torch.randn(1, 1, 512)
+    cif_alphas = torch.randn(1, 1)
+    # flag = torch.ones([6], dtype=torch.int32)
+    # encoder_opt = torch.randn(50, 2, 2, 4, 10, 128)
+    # decoder_opt = torch.randn(16, 2, 2, 4, 10, 128)
+    # decode_fsmn = torch.randn(16, 2, 512, 12)
+    return speech, speech_lengths, feats, cif_hidden, cif_alphas
 
 
-def export_dynamic_axes():
+def export_input_names(self):
+    return ["speech", "speech_lengths", "feats", "cif_hidden", "cif_alphas"]
+
+
+def export_dynamic_axes(self):
     return {
         "speech": {0: "batch_size", 1: "feats_length"},
         "speech_lengths": {
             0: "batch_size",
         },
+        "feats": {0: "batch_size"},
+        "cif_hidden": {0: "batch_size"},
+        "cif_alphas": {0: "batch_size"},
+        # "encoder_opt": {2: "batch_size"},
+        # "decoder_opt": {2: "batch_size"},
+        # "decode_fsmn": {1: "batch_size", 3: "fsmn_length"},
+        "decoder_out": {0: "batch_size"},
+        "pre_token_length": {0: "batch_size"},
+        "feats_o": {0: "batch_size", 1: "feats_length"},
+        "cif_hidden_o": {0: "batch_size"},
+        "cif_alphas_o": {0: "batch_size"},
+        # "encoder_opt_o": {2: "batch_size"},
+        # "decoder_opt_o": {2: "batch_size"},
+        # "decode_fsmn_o": {1: "batch_size"},
     }
 
 
-def export_name():
+def export_name(self):
     return "totalModel.onnx"
 
 
-def export_output_names():
-    return ["logits", "sample_ids"]
+def export_output_names(self):
+    return ["decoder_out", "pre_token_length", "feats_o", "cif_hidden_o", "cif_alphas_o"]
 
 
 # def export_rebuild_model(model, **kwargs):

@@ -9,7 +9,7 @@ frontend = WavFrontendOnline(**args)
 
 
 def load_audio(audio):
-    data, data_len = frontend(audio, audio.shape[1])
+    data, data_len = frontend(audio, audio.shape[1], is_final=True)
 
     return data, audio
 
@@ -19,4 +19,4 @@ for i in range(3200):
     x[0, i] = 100 * np.sin(0.01 * i)
 
 y = load_audio(x)[0]
-print(y.shape)
+print(y)

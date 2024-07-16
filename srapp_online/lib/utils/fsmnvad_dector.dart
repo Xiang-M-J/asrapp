@@ -242,19 +242,20 @@ class FsmnVADStreaming {
       assert(cache["stats"].output_data_buf.last.contain_seg_end_point == true);
       int dropFrames =
           (cache["stats"].output_data_buf.last.end_ms ~/ vad_opts.frame_in_ms);
-      int realDropFrames = dropFrames - (cache["stats"].last_drop_frames as int);
+      int realDropFrames =
+          dropFrames - (cache["stats"].last_drop_frames as int);
       cache["stats"].last_drop_frames = dropFrames;
       cache["stats"].data_buf_all = cache["stats"].data_buf_all.sublist(
           realDropFrames *
               (vad_opts.frame_in_ms * vad_opts.sample_rate ~/ 1000));
       cache["stats"].decibel = cache["stats"].decibel.sublist(realDropFrames);
-      if (realDropFrames == cache["stats"].scores.length){
+      if (realDropFrames == cache["stats"].scores.length) {
         cache["stats"].scores.clear();
-      }else{
+      } else {
         // cache["stats"].scores.sublist(realDropFrames);
         int nowLen = cache["stats"].scores.length;
         List<List<double>> temp = [];
-        for(var i = realDropFrames; i<nowLen; i++){
+        for (var i = realDropFrames; i < nowLen; i++) {
           temp.add(cache["stats"].scores[i]);
         }
         cache["stats"].scores = temp;
@@ -321,68 +322,67 @@ class FsmnVADStreaming {
       int extraSample = max(
         0,
         (vad_opts.frame_length_ms * vad_opts.sample_rate / 1000 -
-            vad_opts.sample_rate * vad_opts.frame_in_ms / 1000).toInt(),
+                vad_opts.sample_rate * vad_opts.frame_in_ms / 1000)
+            .toInt(),
       );
       expectedSampleNumber += (extraSample);
     }
-      if (endPointIsSentEnd) {
-        expectedSampleNumber =
-            max(expectedSampleNumber, (cache["stats"].data_buf.length));
-      }
-      if (cache["stats"].data_buf.length < expectedSampleNumber) {
-        print("error in calling pop data_buf\n");
-      }
+    if (endPointIsSentEnd) {
+      expectedSampleNumber =
+          max(expectedSampleNumber, (cache["stats"].data_buf.length));
+    }
+    if (cache["stats"].data_buf.length < expectedSampleNumber) {
+      print("error in calling pop data_buf\n");
+    }
 
-      if (cache["stats"].output_data_buf.length == 0 || firstFrmIsStartPoint) {
-        cache["stats"].output_data_buf.add(E2EVadSpeechBufWithDoa());
-        cache["stats"].output_data_buf.last.Reset();
-        cache["stats"].output_data_buf.last.start_ms =
-            startFrm * vad_opts.frame_in_ms;
-        cache["stats"].output_data_buf.last.end_ms =
-            cache["stats"].output_data_buf.last.start_ms;
-        cache["stats"].output_data_buf.last.doa = 0;
-      }
-      var curSeg = cache["stats"].output_data_buf.last;
-      if (curSeg.end_ms != startFrm * vad_opts.frame_in_ms) {
-        print("warning\n");
-      }
-      var out_pos = curSeg.buffer.length; // cur_seg.buff现在没做任何操作
-      var data_to_pop = 0;
-      if (endPointIsSentEnd) {
-        data_to_pop = expectedSampleNumber;
-      } else {
-        data_to_pop =
-            (frmCnt * vad_opts.frame_in_ms * vad_opts.sample_rate / 1000)
-                .toInt();
-      }
-      if (data_to_pop > cache["stats"].data_buf.length) {
-        print(
-            'VAD data_to_pop is bigger than cache["stats"].data_buf.size()!!!\n');
-        data_to_pop = cache["stats"].data_buf.length;
-        expectedSampleNumber = cache["stats"].data_buf.length;
-      }
+    if (cache["stats"].output_data_buf.length == 0 || firstFrmIsStartPoint) {
+      cache["stats"].output_data_buf.add(E2EVadSpeechBufWithDoa());
+      cache["stats"].output_data_buf.last.Reset();
+      cache["stats"].output_data_buf.last.start_ms =
+          startFrm * vad_opts.frame_in_ms;
+      cache["stats"].output_data_buf.last.end_ms =
+          cache["stats"].output_data_buf.last.start_ms;
+      cache["stats"].output_data_buf.last.doa = 0;
+    }
+    var curSeg = cache["stats"].output_data_buf.last;
+    if (curSeg.end_ms != startFrm * vad_opts.frame_in_ms) {
+      print("warning\n");
+    }
+    var out_pos = curSeg.buffer.length; // cur_seg.buff现在没做任何操作
+    var data_to_pop = 0;
+    if (endPointIsSentEnd) {
+      data_to_pop = expectedSampleNumber;
+    } else {
+      data_to_pop =
+          (frmCnt * vad_opts.frame_in_ms * vad_opts.sample_rate / 1000).toInt();
+    }
+    if (data_to_pop > cache["stats"].data_buf.length) {
+      print(
+          'VAD data_to_pop is bigger than cache["stats"].data_buf.size()!!!\n');
+      data_to_pop = cache["stats"].data_buf.length;
+      expectedSampleNumber = cache["stats"].data_buf.length;
+    }
 
-      curSeg.doa = 0;
-      for (var sampleCpyOut = 0; sampleCpyOut < data_to_pop; sampleCpyOut++) {
-        out_pos++;
-      }
-      for (var sampleCpyOut = data_to_pop;
-          sampleCpyOut < expectedSampleNumber;
-          sampleCpyOut++) {
-        out_pos++;
-      }
-      if (curSeg.end_ms != startFrm * vad_opts.frame_in_ms) {
-        print("Something wrong with the VAD algorithm\n");
-      }
-      cache["stats"].data_buf_start_frame += frmCnt;
-      curSeg.end_ms = (startFrm + frmCnt) * vad_opts.frame_in_ms;
-      if (firstFrmIsStartPoint) {
-        curSeg.contain_seg_start_point = true;
-      }
-      if (lastFrmIsEndPoint) {
-        curSeg.contain_seg_end_point = true;
-      }
-
+    curSeg.doa = 0;
+    for (var sampleCpyOut = 0; sampleCpyOut < data_to_pop; sampleCpyOut++) {
+      out_pos++;
+    }
+    for (var sampleCpyOut = data_to_pop;
+        sampleCpyOut < expectedSampleNumber;
+        sampleCpyOut++) {
+      out_pos++;
+    }
+    if (curSeg.end_ms != startFrm * vad_opts.frame_in_ms) {
+      print("Something wrong with the VAD algorithm\n");
+    }
+    cache["stats"].data_buf_start_frame += frmCnt;
+    curSeg.end_ms = (startFrm + frmCnt) * vad_opts.frame_in_ms;
+    if (firstFrmIsStartPoint) {
+      curSeg.contain_seg_start_point = true;
+    }
+    if (lastFrmIsEndPoint) {
+      curSeg.contain_seg_end_point = true;
+    }
   }
 
   void OnSilenceDetected(int validFrame, [Map cache = const {}]) {
@@ -439,8 +439,7 @@ class FsmnVADStreaming {
     cache["stats"]!.number_end_time_detected++;
   }
 
-  void MaybeOnVoiceEndIfLastFrame(bool isFinalFrame, int curFrmIdx,
-      Map cache) {
+  void MaybeOnVoiceEndIfLastFrame(bool isFinalFrame, int curFrmIdx, Map cache) {
     if (isFinalFrame) {
       OnVoiceEnd(curFrmIdx, false, true, cache);
       cache["stats"]!.vad_state_machine =
@@ -455,7 +454,8 @@ class FsmnVADStreaming {
   int LatencyFrmNumAtStartPoint(Map cache) {
     int vad_latency = cache["windows_detector"].GetWinSize();
     if (vad_opts.do_extend != 0) {
-      vad_latency += (vad_opts.lookback_time_start_point ~/ vad_opts.frame_in_ms);
+      vad_latency +=
+          (vad_opts.lookback_time_start_point ~/ vad_opts.frame_in_ms);
     }
     return vad_latency;
   }
@@ -638,7 +638,8 @@ class FsmnVADStreaming {
       } else if (cache["stats"].vad_state_machine ==
           VadStateMachine.kVadInStateInSpeechSegment) {
         for (var t = cache["stats"].latest_confirmed_speech_frame + 1;
-            t < curFrmIdx; t ++) {
+            t < curFrmIdx;
+            t++) {
           OnVoiceDetected(t, cache = cache);
         }
         if (curFrmIdx - cache["stats"].confirmed_start_frame + 1 >
@@ -647,10 +648,9 @@ class FsmnVADStreaming {
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
         } else if (!isFinalFrame) {
-            OnVoiceDetected(curFrmIdx, cache = cache);
+          OnVoiceDetected(curFrmIdx, cache = cache);
         } else {
-            MaybeOnVoiceEndIfLastFrame(
-              isFinalFrame, curFrmIdx, cache = cache);
+          MaybeOnVoiceEndIfLastFrame(isFinalFrame, curFrmIdx, cache = cache);
         }
       }
     } else if (AudioChangeState.kChangeStateSpeech2Sil == stateChange) {
@@ -660,15 +660,14 @@ class FsmnVADStreaming {
       } else if (cache["stats"].vad_state_machine ==
           VadStateMachine.kVadInStateInSpeechSegment) {
         if (curFrmIdx - cache["stats"].confirmed_start_frame + 1 >
-              vad_opts.max_single_segment_time / frmShiftInMs) {
-            OnVoiceEnd(curFrmIdx, false, false, cache = cache);
+            vad_opts.max_single_segment_time / frmShiftInMs) {
+          OnVoiceEnd(curFrmIdx, false, false, cache = cache);
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
         } else if (!isFinalFrame) {
           OnVoiceDetected(curFrmIdx, cache = cache);
         } else {
-          MaybeOnVoiceEndIfLastFrame(
-              isFinalFrame, curFrmIdx, cache = cache);
+          MaybeOnVoiceEndIfLastFrame(isFinalFrame, curFrmIdx, cache = cache);
         }
       }
     } else if (AudioChangeState.kChangeStateSpeech2Speech == stateChange) {
@@ -676,16 +675,15 @@ class FsmnVADStreaming {
       if (cache["stats"].vad_state_machine ==
           VadStateMachine.kVadInStateInSpeechSegment) {
         if (curFrmIdx - cache["stats"].confirmed_start_frame + 1 >
-              vad_opts.max_single_segment_time / frmShiftInMs) {
+            vad_opts.max_single_segment_time / frmShiftInMs) {
           cache["stats"].max_time_out = true;
-            OnVoiceEnd(curFrmIdx, false, false, cache = cache);
+          OnVoiceEnd(curFrmIdx, false, false, cache = cache);
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
         } else if (!isFinalFrame) {
-            OnVoiceDetected(curFrmIdx, cache = cache);
+          OnVoiceDetected(curFrmIdx, cache = cache);
         } else {
-            MaybeOnVoiceEndIfLastFrame(
-              isFinalFrame, curFrmIdx, cache = cache);
+          MaybeOnVoiceEndIfLastFrame(isFinalFrame, curFrmIdx, cache = cache);
         }
       }
     } else if (AudioChangeState.kChangeStateSil2Sil == stateChange) {
@@ -693,26 +691,25 @@ class FsmnVADStreaming {
       if (cache["stats"].vad_state_machine ==
           VadStateMachine.kVadInStateStartPointNotDetected) {
         // silence timeout, return zero length decision
-        if (  vad_opts.detect_mode ==
+        if (vad_opts.detect_mode ==
                     VadDetectMode.kVadSingleUtteranceDetectMode &&
                 cache["stats"].continous_silence_frame_count * frmShiftInMs >
-                      vad_opts.max_start_silence_time ||
+                    vad_opts.max_start_silence_time ||
             isFinalFrame && cache["stats"].number_end_time_detected == 0) {
           for (var t = cache["stats"].lastest_confirmed_silence_frame + 1;
               t <
                   curFrmIdx -
                       (cache["stats"].lastest_confirmed_silence_frame + 1);) {
-              OnSilenceDetected(t, cache = cache);
+            OnSilenceDetected(t, cache = cache);
           }
           OnVoiceStart(0, cache = cache, true);
           OnVoiceEnd(0, true, false, cache = cache);
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
-        } else{
-          if (curFrmIdx >=
-              LatencyFrmNumAtStartPoint(cache = cache)) {
+        } else {
+          if (curFrmIdx >= LatencyFrmNumAtStartPoint(cache = cache)) {
             OnSilenceDetected(
-                curFrmIdx -   LatencyFrmNumAtStartPoint(cache = cache),
+                curFrmIdx - LatencyFrmNumAtStartPoint(cache = cache),
                 cache = cache);
           }
         }
@@ -722,58 +719,60 @@ class FsmnVADStreaming {
             cache["stats"].max_end_sil_frame_cnt_thresh) {
           int lookbackFrame =
               (cache["stats"].max_end_sil_frame_cnt_thresh ~/ frmShiftInMs);
-          if ( vad_opts.do_extend != 0) {
+          if (vad_opts.do_extend != 0) {
             lookbackFrame -=
                 (vad_opts.lookahead_time_end_point ~/ frmShiftInMs);
             lookbackFrame -= 1;
             lookbackFrame = max(0, lookbackFrame);
           }
-            OnVoiceEnd(
-              curFrmIdx - lookbackFrame, false, false, cache = cache);
+          OnVoiceEnd(curFrmIdx - lookbackFrame, false, false, cache = cache);
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
         } else if (curFrmIdx - cache["stats"].confirmed_start_frame + 1 >
-              vad_opts.max_single_segment_time / frmShiftInMs) {
-            OnVoiceEnd(curFrmIdx, false, false, cache = cache);
+            vad_opts.max_single_segment_time / frmShiftInMs) {
+          OnVoiceEnd(curFrmIdx, false, false, cache = cache);
           cache["stats"].vad_state_machine =
               VadStateMachine.kVadInStateEndPointDetected;
-        } else if ((  vad_opts.do_extend != 0) && !isFinalFrame) {
+        } else if ((vad_opts.do_extend != 0) && !isFinalFrame) {
           if (cache["stats"].continous_silence_frame_count <=
-              (  vad_opts.lookahead_time_end_point ~/ frmShiftInMs)) {
-              OnVoiceDetected(curFrmIdx, cache = cache);
+              (vad_opts.lookahead_time_end_point ~/ frmShiftInMs)) {
+            OnVoiceDetected(curFrmIdx, cache = cache);
           }
         } else {
-            MaybeOnVoiceEndIfLastFrame(
-              isFinalFrame, curFrmIdx, cache = cache);
+          MaybeOnVoiceEndIfLastFrame(isFinalFrame, curFrmIdx, cache = cache);
         }
       }
     }
     if (cache["stats"].vad_state_machine ==
             VadStateMachine.kVadInStateEndPointDetected &&
-          vad_opts.detect_mode ==
-            VadDetectMode.kVadMutipleUtteranceDetectMode) {
-        ResetDetection(cache = cache);
+        vad_opts.detect_mode == VadDetectMode.kVadMutipleUtteranceDetectMode) {
+      ResetDetection(cache = cache);
     }
   }
 }
 
-
 class FsmnVaDetector {
-
   OrtSessionOptions? _sessionOptions;
   OrtSession? _session;
   bool isInitialed = false;
   FsmnVADStreaming? streaming = FsmnVADStreaming();
 
-  final cache0 = OrtValueTensor.createTensorWithDataList(List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))), [1, 128, 19, 1]);
-  final cache1 = OrtValueTensor.createTensorWithDataList(List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))), [1, 128, 19, 1]);
-  final cache2 = OrtValueTensor.createTensorWithDataList(List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))), [1, 128, 19, 1]);
-  final cache3 = OrtValueTensor.createTensorWithDataList(List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))), [1, 128, 19, 1]);
+  final cache0 = OrtValueTensor.createTensorWithDataList(
+      List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))),
+      [1, 128, 19, 1]);
+  final cache1 = OrtValueTensor.createTensorWithDataList(
+      List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))),
+      [1, 128, 19, 1]);
+  final cache2 = OrtValueTensor.createTensorWithDataList(
+      List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))),
+      [1, 128, 19, 1]);
+  final cache3 = OrtValueTensor.createTensorWithDataList(
+      List<Float32List>.filled(128, Float32List.fromList(List.filled(19, 0.0))),
+      [1, 128, 19, 1]);
 
   FsmnVaDetector();
 
-  reset() {
-  }
+  reset() {}
 
   release() {
     _sessionOptions?.release();
@@ -797,7 +796,7 @@ class FsmnVaDetector {
     return true;
   }
 
-  Future<bool> initModelAsync(String path) async{
+  Future<bool> initModelAsync(String path) async {
     final rawAssetFile = await rootBundle.load(path);
     return compute(_initModel, rawAssetFile);
   }
@@ -813,18 +812,24 @@ class FsmnVaDetector {
     return true;
   }
 
+  Future<List<List<int>>?> predictASync(List<int> intData) {
+    return compute(predict, intData);
+  }
 
-  Future<List<List<int>>?> predict(List<int> intData) async {
+  List<List<int>>? predict(List<int> intData) {
     final feature = extractFbankOnline(intData);
-    final inputOrt = OrtValueTensor.createTensorWithDataList(doubleList2FloatList(feature), [1, feature.length, 400]);
+    final inputOrt = OrtValueTensor.createTensorWithDataList(
+        doubleList2FloatList(feature), [1, feature.length, 400]);
     final runOptions = OrtRunOptions();
-    final inputs = {'speech': inputOrt, "in_cache0": cache0,"in_cache1": cache1,"in_cache2": cache2,"in_cache3": cache3, };
+    // final inputs = {'speech': inputOrt, "in_cache0": cache0,"in_cache1": cache1,"in_cache2": cache2,"in_cache3": cache3, };
+    final inputs = {"feats": inputOrt};
     final List<OrtValue?>? outputs;
 
-    outputs = await _session?.runAsync(runOptions, inputs);
+    outputs = _session?.run(runOptions, inputs);
     inputOrt.release();
 
     runOptions.release();
+
     /// Output probability & update h,c recursively
     final output = (outputs?[0]?.value as List<List<List<double>>>)[0];
 
@@ -832,7 +837,8 @@ class FsmnVaDetector {
       element?.release();
     });
     int frameNum = ((intData.length - 400) ~/ 160 + 1);
-    List<List<int>>? segments = streaming?.forward(output, intList2doubleList(intData.sublist(0, frameNum * 160 - 160 + 400)));
+    List<List<int>>? segments = streaming?.forward(output,
+        intList2doubleList(intData.sublist(0, frameNum * 160 - 160 + 400)));
 
     return segments;
   }

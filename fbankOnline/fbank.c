@@ -28,8 +28,7 @@ void WavFrontend(float * s, float ** o, int sampleNum) {
 	d2 = CreateVector(wlen);
 
 	info = InitFBank(wlen, samplePeriod, bankNum, lowpassfre, hipassfre, 1, 1, 0, 1.0, 0, 0);
-	//��ʼ��������wlen���������=(10E7/16000),bankNum,���Ƶ��,���Ƶ��,�Ƿ�����������Ƿ��log���Ƿ�floatfft���Ƿ�resacle(1.0������)
-	//����ham��
+	
 	hamWin = GenHamWindow(wlen);
 	fbank = CreateVector(bankNum);
 
@@ -101,7 +100,7 @@ void WavFrontend(float * s, float ** o, int sampleNum) {
 	return;
 }
 
-void WavFrontendOnline(float * s, float ** o, int sampleNum) {
+void WavFrontendOnline(float * s, float ** o, int sampleNum, int is_final) {
 	srand((unsigned)time(NULL));
 	float sampleFrequency = 16000;
 	float samplePeriod = (float)1e7 / sampleFrequency;
@@ -145,7 +144,7 @@ void WavFrontendOnline(float * s, float ** o, int sampleNum) {
 		
 		// 加上扰动
 		for (size_t i = 0; i < wlen; i++) {
-			d2[i + 1] = s[i + j];
+			d2[i + 1] = s[i + j] * (1 << 15);
 		}
 
 		// 去除直流分量
@@ -176,7 +175,7 @@ void WavFrontendOnline(float * s, float ** o, int sampleNum) {
 	}
 	//SubtractColumnMean(o, bankNum, m);
 
-	apply_lfr_online(fbank_data, o, lfr_m, lfr_n, m, bankNum);
+	apply_lfr_online(fbank_data, o, lfr_m, lfr_n, m, bankNum, is_final);
 	
 	for (size_t i = 0; i < m; i++)
 	{
@@ -251,136 +250,255 @@ void apply_lfr(float** data, float **output, int lfr_m, int lfr_n, int m, int ba
 	int m_lfr = (int)ceil(m / (lfr_n * 1.0));
 	int m_lfm = (int)((lfr_m - 1) / 2);
 
-	// �ȴ�����һ�� m_lfm �� data[0]  + data[0: lfr_m - m_lfm]
-	for (size_t i = 0; i < m_lfm; i++)
+	int start = 0;   // 开始的起点
+	int p = 0;       // 左侧的 m_lfr 个 data[0] 所能填充的个数
+	for (size_t i = 0; i < m_lfr; i++)
 	{
-		for (size_t j = 0; j < bankNum; j++)
-		{
-			output[0][i * bankNum + j] = data[0][j];
-		}
-	}
-	for (size_t i = 0; i < lfr_m - m_lfm; i++)
-	{
-		for (size_t j = 0; j < bankNum; j++)
-		{
-			output[0][m_lfm * bankNum + i * bankNum + j] = data[i][j];
-		}
-	}
-	
-	// �ٴ����м��
-
-	for (size_t i = 1; i < m_lfr; i++)
-	{
-		if (lfr_m <= m + m_lfm - i * lfr_n)
-		{
-			int l_ = i * lfr_n - m_lfm;
-			for (size_t j = l_; j < l_ + lfr_m; j++)
+		p = 0;
+		start = i * lfr_n - m_lfm;
+		if (m_lfm > i * lfr_n) {
+			for (size_t j = 0; j < m_lfm - i * lfr_n; j++)
 			{
 				for (size_t k = 0; k < bankNum; k++)
 				{
-					output[i][(j-l_) * bankNum + k] = data[j][k];
+					output[i][j * bankNum + k] = data[0][k];
 				}
+			}
+			p = m_lfm - i * lfr_n;
+			start = 0;
+		}
+
+		if (lfr_m <= m + m_lfm - i * lfr_n)
+		{
+			int _p = p;
+			for (size_t j = start; j < start + lfr_m - p; j++)
+			{
+				for (size_t k = 0; k < bankNum; k++)
+				{
+					output[i][_p * bankNum + k] = data[j][k];
+				}
+				_p++;
 			}
 		}
 		else
 		{
-			// �������һ�У�ʹ�����һ�н��в���
 			int num_padding = lfr_m - (m + m_lfm - i * lfr_n);
 
 			int l_ = i * lfr_n - m_lfm;
-			for (size_t j = i * lfr_n - m_lfm; j < m; j++)
+
+			for (size_t j = start; j < m; j++)
 			{
 				for (size_t k = 0; k < bankNum; k++)
 				{
-					output[i][(j-l_) * bankNum + k] = data[j][k];
+					output[i][p * bankNum + k] = data[j][k];
 				}
+				p++;
 			}
 			int filled_num = (m - (i * lfr_n - m_lfm)) * bankNum;
 			for (size_t j = 0; j < num_padding; j++)
 			{
 				for (size_t k = 0; k < bankNum; k++)
 				{
-					output[i][filled_num + j * bankNum + k] = data[m - 1][k];
+					output[i][(p + j) * bankNum + k] = data[m - 1][k];
 				}
 			}
+		
 		}
 	}
+	//for (size_t i = 0; i < m_lfm; i++)
+	//{
+	//	for (size_t j = 0; j < bankNum; j++)
+	//	{
+	//		output[0][i * bankNum + j] = data[0][j];
+	//	}
+	//}
+	//for (size_t i = 0; i < lfr_m - m_lfm; i++)
+	//{
+	//	for (size_t j = 0; j < bankNum; j++)
+	//	{
+	//		output[0][m_lfm * bankNum + i * bankNum + j] = data[i][j];
+	//	}
+	//}
+	//
+
+	//for (size_t i = 1; i < m_lfr; i++)
+	//{
+	//	if (lfr_m <= m + m_lfm - i * lfr_n)
+	//	{
+	//		int l_ = i * lfr_n - m_lfm;
+	//		for (size_t j = l_; j < l_ + lfr_m; j++)
+	//		{
+	//			for (size_t k = 0; k < bankNum; k++)
+	//			{
+	//				output[i][(j-l_) * bankNum + k] = data[j][k];
+	//			}
+	//		}
+	//	}
+	//	else
+	//	{
+	//		// �������һ�У�ʹ�����һ�н��в���
+	//		int num_padding = lfr_m - (m + m_lfm - i * lfr_n);
+
+	//		int l_ = i * lfr_n - m_lfm;
+	//		for (size_t j = i * lfr_n - m_lfm; j < m; j++)
+	//		{
+	//			for (size_t k = 0; k < bankNum; k++)
+	//			{
+	//				output[i][(j-l_) * bankNum + k] = data[j][k];
+	//			}
+	//		}
+	//		int filled_num = (m - (i * lfr_n - m_lfm)) * bankNum;
+	//		for (size_t j = 0; j < num_padding; j++)
+	//		{
+	//			for (size_t k = 0; k < bankNum; k++)
+	//			{
+	//				output[i][filled_num + j * bankNum + k] = data[m - 1][k];
+	//			}
+	//		}
+	//	}
+	//}
 }
 
-void apply_lfr_online(float** data, float **output, int lfr_m, int lfr_n, int m, int bankNum)
+void apply_lfr_online(float** data, float **output, int lfr_m, int lfr_n, int m, int bankNum, int is_final)
 {
 	int m_lfm = (int)((lfr_m - 1) / 2);
-	int m_lfr = (int)ceil(m + m_lfm - (int)((lfr_m - 1) / 2) / (lfr_n * 1.0));
-
-	// 先处理第一行 m_lfm 个 data[0]  + data[0: lfr_m - m_lfm]
-	for (size_t i = 0; i < m_lfm; i++)
+	int m_lfr = (int)ceil(m / lfr_n);    // 如果是 is_final，则时间维度有 (m + m_lfm - lfr_m) / lfr_m
+	int start = 0;   // 开始的起点
+	int p = 0;       // 左侧的 m_lfr 个 data[0] 所能填充的个数
+	for (size_t i = 0; i < m_lfr; i++)
 	{
-		for (size_t j = 0; j < bankNum; j++)
-		{
-			output[0][i * bankNum + j] = data[0][j];
-		}
-	}
-	for (size_t i = 0; i < lfr_m - m_lfm; i++)
-	{
-		for (size_t j = 0; j < bankNum; j++)
-		{
-			output[0][m_lfm * bankNum + i * bankNum + j] = data[i][j];
-		}
-	}
-	for (size_t i = 0; i < m_lfm - lfr_n; i++)
-	{
-		for (size_t j = 0; j < bankNum; j++)
-		{
-			output[1][i * bankNum + j] = data[0][j];
-		}
-	}
-	for (size_t i = 0; i < lfr_m - m_lfm + lfr_n; i++)
-	{
-		for (size_t j = 0; j < bankNum; j++)
-		{
-			output[1][(m_lfm - lfr_n)*bankNum + i * bankNum + j] = data[i][j];
-		}
-	}
-
-
-	// 再处理中间的
-
-	for (size_t i = 2; i < m_lfr; i++)
-	{
-		if (lfr_m <= m + m_lfm - i * lfr_n)
-		{
-			int l_ = i * lfr_n - m_lfm;
-			for (size_t j = l_; j < l_ + lfr_m; j++)
+		p = 0;
+		start = i * lfr_n - m_lfm;
+		if (m_lfm > i * lfr_n) {
+			for (size_t j = 0; j < m_lfm - i * lfr_n; j++)
 			{
 				for (size_t k = 0; k < bankNum; k++)
 				{
-					output[i][(j-l_) * bankNum + k] = data[j][k];
+					output[i][j * bankNum + k] = data[0][k];
 				}
+			}
+			p = m_lfm - i * lfr_n;
+			start = 0;
+		}
+
+		if (lfr_m <= m + m_lfm - i * lfr_n)
+		{
+			int _p = p;
+			for (size_t j = start; j < start + lfr_m - p; j++)
+			{
+				for (size_t k = 0; k < bankNum; k++)
+				{
+					output[i][_p * bankNum + k] = data[j][k];
+				}
+				_p++;
 			}
 		}
 		else
 		{
-			// 处理最后一行，使用最后一列进行补齐
-			int num_padding = lfr_m - (m + m_lfm - i * lfr_n);
-
-			int l_ = i * lfr_n - m_lfm;
-			for (size_t j = i * lfr_n - m_lfm; j < m; j++)
+			if (is_final == 1)
 			{
-				for (size_t k = 0; k < bankNum; k++)
+				int num_padding = lfr_m - (m + m_lfm - i * lfr_n);
+
+				int l_ = i * lfr_n - m_lfm;
+				
+				for (size_t j = start; j < m; j++)
 				{
-					output[i][(j-l_) * bankNum + k] = data[j][k];
+					for (size_t k = 0; k < bankNum; k++)
+					{
+						output[i][p * bankNum + k] = data[j][k];
+					}
+					p++;
+				}
+				int filled_num = (m - (i * lfr_n - m_lfm)) * bankNum;
+				for (size_t j = 0; j < num_padding; j++)
+				{
+					for (size_t k = 0; k < bankNum; k++)
+					{
+						output[i][(p + j) * bankNum + k] = data[m - 1][k];
+					}
 				}
 			}
-			int filled_num = (m - (i * lfr_n - m_lfm)) * bankNum;
-			for (size_t j = 0; j < num_padding; j++)
+			else
 			{
-				for (size_t k = 0; k < bankNum; k++)
-				{
-					output[i][filled_num + j * bankNum + k] = data[m - 1][k];
-				}
+				break;
 			}
 		}
 	}
+
+	//// 先处理第一行 m_lfm 个 data[0]  + data[0: lfr_m - m_lfm]
+	//for (size_t i = 0; i < m_lfm; i++)
+	//{
+	//	for (size_t j = 0; j < bankNum; j++)
+	//	{
+	//		output[0][i * bankNum + j] = data[0][j];
+	//	}
+	//}
+	//if (m < lfr_m - m_lfm)
+	//{
+	//	int num_padding = lfr_m - (m + m_lfm);
+
+	//}
+	//for (size_t i = 0; i < lfr_m - m_lfm; i++)
+	//{
+	//	for (size_t j = 0; j < bankNum; j++)
+	//	{
+	//		output[0][m_lfm * bankNum + i * bankNum + j] = data[i][j];
+	//	}
+	//}
+	//for (size_t i = 0; i < m_lfm - lfr_n; i++)
+	//{
+	//	for (size_t j = 0; j < bankNum; j++)
+	//	{
+	//		output[1][i * bankNum + j] = data[0][j];
+	//	}
+	//}
+	//for (size_t i = 0; i < lfr_m - m_lfm + lfr_n; i++)
+	//{
+	//	for (size_t j = 0; j < bankNum; j++)
+	//	{
+	//		output[1][(m_lfm - lfr_n)*bankNum + i * bankNum + j] = data[i][j];
+	//	}
+	//}
+
+
+	//// 再处理中间的
+
+	//for (size_t i = 2; i < m_lfr; i++)
+	//{
+	//	if (lfr_m <= m + m_lfm - i * lfr_n)
+	//	{
+	//		int l_ = i * lfr_n - m_lfm;
+	//		for (size_t j = l_; j < l_ + lfr_m; j++)
+	//		{
+	//			for (size_t k = 0; k < bankNum; k++)
+	//			{
+	//				output[i][(j-l_) * bankNum + k] = data[j][k];
+	//			}
+	//		}
+	//	}
+	//	else
+	//	{
+	//		// 处理最后一行，使用最后一列进行补齐
+	//		int num_padding = lfr_m - (m + m_lfm - i * lfr_n);
+
+	//		int l_ = i * lfr_n - m_lfm;
+	//		for (size_t j = i * lfr_n - m_lfm; j < m; j++)
+	//		{
+	//			for (size_t k = 0; k < bankNum; k++)
+	//			{
+	//				output[i][(j-l_) * bankNum + k] = data[j][k];
+	//			}
+	//		}
+	//		int filled_num = (m - (i * lfr_n - m_lfm)) * bankNum;
+	//		for (size_t j = 0; j < num_padding; j++)
+	//		{
+	//			for (size_t k = 0; k < bankNum; k++)
+	//			{
+	//				output[i][filled_num + j * bankNum + k] = data[m - 1][k];
+	//			}
+	//		}
+	//	}
+	//}
 }
 
 

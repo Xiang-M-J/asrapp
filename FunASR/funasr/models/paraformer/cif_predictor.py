@@ -252,6 +252,97 @@ class CifPredictorV2(torch.nn.Module):
 
         return acoustic_embeds, token_num, alphas, cif_peak
 
+    def forward_chunk_export(self, hidden, cache=None, **kwargs):
+        is_final = kwargs.get("is_final", False)
+        batch_size, len_time, hidden_size = hidden.shape
+        h = hidden
+        context = h.transpose(1, 2)
+        queries = self.pad(context)
+        output = torch.relu(self.cif_conv1d(queries))
+        output = output.transpose(1, 2)
+        output = self.cif_output(output)
+        alphas = torch.sigmoid(output)
+        alphas = torch.nn.functional.relu(alphas * self.smooth_factor - self.noise_threshold)
+
+        alphas = alphas.squeeze(-1)
+
+        token_length = []
+        list_fires = []
+        list_frames = []
+        cache_alphas = []
+        cache_hiddens = []
+
+        if cache is not None and "chunk_size" in cache:
+            alphas[:, : cache["chunk_size"][0]] = 0.0
+            if not is_final:
+                alphas[:, sum(cache["chunk_size"][:2]) :] = 0.0
+        if cache is not None and "cif_alphas" in cache and "cif_hidden" in cache:
+            cache["cif_hidden"] = to_device(cache["cif_hidden"], device=hidden.device)
+            cache["cif_alphas"] = to_device(cache["cif_alphas"], device=alphas.device)
+            hidden = torch.cat((cache["cif_hidden"], hidden), dim=1)
+            alphas = torch.cat((cache["cif_alphas"], alphas), dim=1)
+        if cache is not None and is_final:
+            tail_hidden = torch.zeros((batch_size, 1, hidden_size), device=hidden.device)
+            tail_alphas = torch.tensor([[self.tail_threshold]], device=alphas.device)
+            tail_alphas = torch.tile(tail_alphas, (batch_size, 1))
+            hidden = torch.cat((hidden, tail_hidden), dim=1)
+            alphas = torch.cat((alphas, tail_alphas), dim=1)
+
+        len_time = alphas.shape[1]
+        for b in range(batch_size):
+            integrate = 0.0
+            frames = torch.zeros((hidden_size), device=hidden.device)
+            list_frame = []
+            list_fire = []
+            for t in range(len_time):
+                alpha = alphas[b][t]
+                if alpha + integrate < self.threshold:
+                    integrate += alpha
+                    list_fire.append(integrate)
+                    frames += alpha * hidden[b][t]
+                else:
+                    frames += (self.threshold - integrate) * hidden[b][t]
+                    list_frame.append(frames)
+                    integrate += alpha
+                    list_fire.append(integrate)
+                    integrate -= self.threshold
+                    frames = integrate * hidden[b][t]
+
+            cache_alphas.append(integrate)
+            if integrate > 0.0:
+                cache_hiddens.append(frames / integrate)
+            else:
+                cache_hiddens.append(frames)
+
+            token_length.append(torch.tensor(len(list_frame), device=alphas.device))
+            list_fires.append(list_fire)
+            list_frames.append(list_frame)
+
+        cache["cif_alphas"] = torch.stack(cache_alphas, dim=0)
+        cache["cif_alphas"] = torch.unsqueeze(cache["cif_alphas"], dim=0)
+        cache["cif_hidden"] = torch.stack(cache_hiddens, dim=0)
+        cache["cif_hidden"] = torch.unsqueeze(cache["cif_hidden"], dim=0)
+
+        max_token_len = max(token_length)
+        if max_token_len == 0:
+            return hidden, torch.stack(token_length, 0), None, None
+        list_ls = []
+        for b in range(batch_size):
+            pad_frames = torch.zeros(
+                (max_token_len - token_length[b], hidden_size), device=alphas.device
+            )
+            if token_length[b] == 0:
+                list_ls.append(pad_frames)
+            else:
+                list_frames[b] = torch.stack(list_frames[b])
+                list_ls.append(torch.cat((list_frames[b], pad_frames), dim=0))
+
+        cache["cif_alphas"] = torch.stack(cache_alphas, dim=0)
+        cache["cif_alphas"] = torch.unsqueeze(cache["cif_alphas"], dim=0)
+        cache["cif_hidden"] = torch.stack(cache_hiddens, dim=0)
+        cache["cif_hidden"] = torch.unsqueeze(cache["cif_hidden"], dim=0)
+        return torch.stack(list_ls, 0), torch.stack(token_length, 0), None, None
+
     def forward_chunk(self, hidden, cache=None, **kwargs):
         is_final = kwargs.get("is_final", False)
         batch_size, len_time, hidden_size = hidden.shape

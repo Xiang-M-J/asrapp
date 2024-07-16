@@ -1,5 +1,3 @@
-import 'dart:collection';
-import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:math';
@@ -40,14 +38,63 @@ class MyApp extends StatelessWidget {
   }
 }
 
+List<int> waveform = List<int>.empty(growable: true);
+
+void recordManager(SendPort sendPort) async {
+
+  StreamSubscription? recordingDataSubscription;
+  FlutterSoundRecorder? mRecorder = FlutterSoundRecorder();
+
+  await mRecorder.openRecorder();
+  ReceivePort receivePort = ReceivePort();
+
+  sendPort.send(receivePort.sendPort);
+  await for (var message in receivePort) {
+    if (message == 1) {
+      waveform.clear();
+      var recordingDataController = StreamController<Food>();
+      recordingDataSubscription =
+          recordingDataController.stream.listen((buffer) {
+        if (buffer is FoodData) {
+          waveform.addAll(uint8LtoInt16List(buffer.data!));
+        }
+      });
+      await mRecorder?.startRecorder(
+        toStream: recordingDataController.sink,
+        codec: Codec.pcm16,
+        numChannels: 1,
+        sampleRate: 16000,
+        enableVoiceProcessing: false,
+        bufferSize: 8192,
+      );
+      sendPort.send('start');
+    } else if (message == 0) {
+      await mRecorder?.stopRecorder();
+      if (recordingDataSubscription != null) {
+        await recordingDataSubscription.cancel();
+        recordingDataSubscription = null;
+      }
+      sendPort.send("stop");
+    } else if (message == -1) {
+      waveform.clear();
+
+      mRecorder?.closeRecorder();
+      if (recordingDataSubscription != null) {
+        await recordingDataSubscription.cancel();
+        recordingDataSubscription = null;
+      }
+      mRecorder = null;
+    }
+  }
+}
+
 class AsrScreen extends StatefulWidget {
   const AsrScreen({super.key});
   @override
   AsrScreenState createState() => AsrScreenState();
 }
 
-class AsrScreenState extends State<AsrScreen>
-    with SingleTickerProviderStateMixin {
+class AsrScreenState extends State<AsrScreen> {
   // String _recordFilePath;
   final TextEditingController resultController = TextEditingController();
   final TextEditingController statusController = TextEditingController();
@@ -69,14 +116,14 @@ class AsrScreenState extends State<AsrScreen>
   int lastWaveformLength = 0;
   List<List<int>> voice = List<List<int>>.empty(growable: true);
 
-  FlutterSoundRecorder? mRecorder = FlutterSoundRecorder();
   FlutterSoundPlayer? mPlayer = FlutterSoundPlayer();
+
+  Isolate? _recorderIsolate;
+  SendPort? _sendPort;
 
   // List<Uint8List> data = List<Uint8List>.empty(growable: true);
   List<int> waveform = List<int>.empty(growable: true);
 
-  String? audioPath;
-  StreamSubscription? recordingDataSubscription;
   bool mRecorderIsInitialed = false;
 
   List<String> tempAudioPaths = List.empty(growable: true);
@@ -108,6 +155,7 @@ class AsrScreenState extends State<AsrScreen>
   void initState() {
     super.initState();
     initializeAudio();
+    _initIsolate();
 
     if (!isSRModelInitialed) {
       statusController.text = "语音识别模型正在加载";
@@ -121,7 +169,7 @@ class AsrScreenState extends State<AsrScreen>
 
   void initModel() async {
     await speechRecognizer?.initModel();
-    await vaDetector?.initModel("assets/models/fsmn_vad.quant.onnx");
+    await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
     setState(() {
       statusController.text = "语音识别模型已加载";
       isSRModelInitialed = true;
@@ -133,7 +181,7 @@ class AsrScreenState extends State<AsrScreen>
     if (status != PermissionStatus.granted) {
       throw RecordingPermissionException("Microphone permission not granted");
     }
-    await mRecorder!.openRecorder();
+    // await mRecorder!.openRecorder();
     final session = await AudioSession.instance;
     await session.configure(AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
@@ -152,10 +200,6 @@ class AsrScreenState extends State<AsrScreen>
       androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
       androidWillPauseWhenDucked: true,
     ));
-    setState(() {
-      mRecorderIsInitialed = true;
-    });
-    mPlayer!.openPlayer();
   }
 
   @override
@@ -165,10 +209,9 @@ class AsrScreenState extends State<AsrScreen>
     _timer?.cancel();
     vadTimer?.cancel();
     srTimer?.cancel();
-    mRecorder!.closeRecorder();
-    mRecorder = null;
     mPlayer!.closePlayer();
     mPlayer = null;
+    _sendPort?.send(-1);
     vaDetector?.release();
     erniePunctuation?.release();
     speechRecognizer?.release();
@@ -181,56 +224,23 @@ class AsrScreenState extends State<AsrScreen>
         .startPlayer(fromDataBuffer: remindSound, codec: Codec.pcm16WAV);
   }
 
-  ///开始语音录制的方法
-  void start() async {
-    assert(mRecorderIsInitialed);
-    // data.clear();
-    waveform.clear();
-    var recordingDataController = StreamController<Food>();
-    recordingDataSubscription = recordingDataController.stream.listen((buffer) {
-      if (buffer is FoodData) {
-        waveform.addAll(uint8LtoInt16List(buffer.data!));
+  Future<void> _initIsolate() async {
+    ReceivePort receivePort = ReceivePort();
+    _recorderIsolate = await Isolate.spawn(recordManager, receivePort.sendPort);
+
+    receivePort.listen((message) {
+      if (message is SendPort) {
+        _sendPort = message;
+      } else if (message is String) {
+        setState(() {
+          if (message == 'start') {
+            isRecording = true;
+          } else {
+            isRecording = false;
+          }
+        });
       }
     });
-    await mRecorder!.startRecorder(
-      toStream: recordingDataController.sink,
-      codec: Codec.pcm16,
-      numChannels: 1,
-      sampleRate: 16000,
-      enableVoiceProcessing: false,
-      bufferSize: 8192,
-    );
-    setState(() {});
-  }
-
-
-  ///停止语音录制的方法
-  Future<void> stop() async {
-    await mRecorder!.stopRecorder();
-    if (recordingDataSubscription != null) {
-      await recordingDataSubscription!.cancel();
-      recordingDataSubscription = null;
-    }
-    if (_count < 1) {
-      showToastWrapper("说话时间太短了");
-      setState(() {
-        statusController.text = "";
-      });
-      return;
-    }
-
-    // setState(() {
-    //   isRecognizing = true;
-    //   statusController.text = "正在识别...";
-    // });
-    // final intData = uint8LList2Int16List(data);
-
-    // await inference(waveform);
-
-    // setState(() {
-    //   isRecognizing = false;
-    //   statusController.text = "识别完成";
-    // });
   }
 
   // 进行推理，包括 VAD 和语音识别
@@ -241,7 +251,7 @@ class AsrScreenState extends State<AsrScreen>
         setState(() {
           statusController.text = "正在获取VAD结果";
         });
-        segments = await vaDetector?.predict(intData);
+        segments = vaDetector?.predict(intData);
       }
       if ((useVAD && segments == null) || (useVAD && segments!.isEmpty)) {
         showToastWrapper("似乎没有检测到语音");
@@ -281,25 +291,24 @@ class AsrScreenState extends State<AsrScreen>
     }
   }
 
-  vadSegment(List<int> intData) async{
+  vadSegment(List<int> intData) async {
     List<List<int>>? segments;
-    segments = await vaDetector?.predict(intData);
+    segments = await vaDetector?.predictASync(intData);
     return segments;
   }
 
-  speechRecognize(List<int> intData) async{
+  speechRecognize(List<int> intData) async {
     Map<String, List<dynamic>>? result;
     result = await speechRecognizer?.predictAsync(intData);
     return result;
   }
 
-
   hideVoiceView() {
     if (isRecognizing) return;
     if (_timer!.isActive) {
       _timer?.cancel();
+      logger.i("stop count timer");
     }
-    stop();
   }
 
   int2time(int count) {
@@ -312,64 +321,77 @@ class AsrScreenState extends State<AsrScreen>
     return time;
   }
 
-  setTimer(){
-    _timer = Timer.periodic(
-        const Duration(milliseconds: 1000), (t) {
+  vadSegmentWrapper(int step) async {
+    if (step < 800) return;
+
+    print(step);
+
+    List<List<int>>? segments = await vadSegment(waveform.sublist(0, step));
+
+    logger.i(segments);
+    if (segments == null) {
+      waveform = waveform.sublist(step);
+      // startIdx += step;
+    } else {
+      if (segments.isEmpty) {
+        waveform = waveform.sublist(step);
+      } else {
+        int lastStartIdx = 0;
+        for (var segment in segments) {
+          if (segment[1] * 16 < step) {
+            voice.add(waveform.sublist(segment[0] * 16, segment[1] * 16));
+            lastStartIdx = segment[1] * 16;
+          } else {
+            lastStartIdx = segment[0] * 16;
+          }
+        }
+        waveform = waveform.sublist(lastStartIdx);
+      }
+    }
+    if (waveform.length > 64000) {
+      voice.add(waveform.sublist(0, 64000));
+      waveform = waveform.sublist(
+        64000,
+      );
+      logger.i("输入过长，直接截断");
+    }
+    logger.i(waveform.length);
+  }
+
+  srWrapper() async {
+    if (voice.isEmpty) {
+      logger.i("无语音段");
+      return;
+    }
+    Map? result = await speechRecognize(voice.removeAt(0));
+    resultController.text += result?["char"].join(" ") + "，";
+  }
+
+  setTimer() {
+    _timer = Timer.periodic(const Duration(milliseconds: 1000), (t) {
       setState(() {
         _count++;
       });
     });
     startIdx = 0;
-    vadTimer = Timer.periodic(const Duration(milliseconds: 1000), (t) async {
-      if(waveform.length < 100) return;
-
-      step = min(waveform.length - startIdx, 16000);
-      List<List<int>> ? segments = await vadSegment(waveform.sublist(startIdx, startIdx + step));
-
-      print(segments);
-      if(segments == null){
-        waveform = waveform.sublist(startIdx + step);
-        // startIdx += step;
-      }else{
-        if (segments.isEmpty){
-          // startIdx += step;
-          waveform = waveform.sublist(startIdx + step);
-        }else{
-          int lastStartIdx = 0;
-          for (var segment in segments){
-            if (segment[1] * 16 < startIdx + step){
-              voice.add(waveform.sublist(segment[0] * 16, startIdx + step));
-              lastStartIdx = segment[1] * 16;
-            }else{
-              lastStartIdx = segment[0] * 16 - 200;
-            }
-          }
-          waveform = waveform.sublist(lastStartIdx);
-        }
-      }
-      if(waveform.length > 64000){
-        voice.add(waveform.sublist(0, 64000));
-        waveform = waveform.sublist(64000, );
-        logger.i("输入过长，直接截断");
-      }
-      if(!isRecording && waveform.length == lastWaveformLength){
-        if(vadTimer!.isActive)  vadTimer?.cancel();
-        logger.i("stop vad timer");
-      }
-      lastWaveformLength = waveform.length;
-      logger.i(waveform.length);
-    });
-
-    srTimer = Timer.periodic(const Duration(milliseconds: 500), (t)async {
-      if(voice.isEmpty){
-        return;
-      }
-      Map? result = await speechRecognize(voice.removeAt(0));
-      resultController.text += result?["char"].join(" ") + "，";
-      if (! vadTimer!.isActive && voice.isEmpty){
+    srTimer = Timer.periodic(const Duration(seconds: 1), (t) async {
+      if (!vadTimer!.isActive && voice.isEmpty) {
         if (srTimer!.isActive) srTimer?.cancel();
         logger.i("srTimer is stop");
       }
+      await srWrapper();
+    });
+    // for(var i = 0; ; i++){
+    //   Future.delayed(Duration(seconds: 2));
+    //   print(waveform.length);
+    // }
+    vadTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!isRecording && waveform.length < 800) {
+        if (vadTimer!.isActive) vadTimer?.cancel();
+        logger.i("stop vad timer");
+      }
+      step = min(waveform.length, 16000);
+      vadSegmentWrapper(step);
     });
   }
 
@@ -423,23 +445,30 @@ class AsrScreenState extends State<AsrScreen>
             GestureDetector(
               onTap: isSRModelInitialed
                   ? () {
-                      if (isRecording) {
-                        setState(() {
-                          isRecording = false;
-                          statusController.text = "";
-                          textShow = "开始录音";
-                        });
-                        hideVoiceView();
-                      } else {
-                        _count = 0;
-                        setState(() {
-                          isRecording = true;
-                          statusController.text = "正在录音...";
-                          textShow = "停止录音";
-                        });
-                        start();
-                        setTimer();
+                      if (_sendPort != null) {
+                        if (isRecording) {
+                          _sendPort?.send(0);
+                        } else {
+                          _sendPort?.send(1);
+                        }
                       }
+                      // if (isRecording) {
+                      //   setState(() {
+                      //     isRecording = false;
+                      //     statusController.text = "";
+                      //     textShow = "开始录音";
+                      //   });
+                      //   hideVoiceView();
+                      // } else {
+                      //   _count = 0;
+                      //   setState(() {
+                      //     isRecording = true;
+                      //     statusController.text = "正在录音...";
+                      //     textShow = "停止录音";
+                      //   });
+                      //   start();
+                      //   setTimer();
+                      // }
                     }
                   : null,
               child: Container(
@@ -449,8 +478,7 @@ class AsrScreenState extends State<AsrScreen>
                 decoration: BoxDecoration(
                   color: isRecording ? Colors.green : Colors.grey,
                   borderRadius: BorderRadius.circular(64),
-                  border: Border.all(
-                      width: 8.0, color: Colors.blueGrey),
+                  border: Border.all(width: 8.0, color: Colors.blueGrey),
                 ),
 
                 // margin: const EdgeInsets.fromLTRB(50, 0, 50, 20),

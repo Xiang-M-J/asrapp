@@ -10,13 +10,16 @@ base_path = (r"D:\work\asrapp\FunASR-main\examples\industrial_data_pretraining\p
 encoder_session = onnxruntime.InferenceSession(base_path + "model.quant.onnx")
 decoder_session = onnxruntime.InferenceSession(base_path + "decoder.quant.onnx")
 
+model_session = onnxruntime.InferenceSession(base_path + "totalModel_quant.onnx")
+
 
 def to_numpy(tensor):
     return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
 
 
 # WavFrontendOnline
-args = {'cmvn_file': base_path + 'am.mvn', 'dither': 0.0, 'frame_length': 25, 'frame_shift': 10, 'fs': 16000, 'lfr_m': 7, 'lfr_n': 6, 'n_mels': 80, 'window': 'hamming'}
+args = {'cmvn_file': base_path + 'am.mvn', 'dither': 0.0, 'frame_length': 25, 'frame_shift': 10, 'fs': 16000,
+        'lfr_m': 7, 'lfr_n': 6, 'n_mels': 80, 'window': 'hamming'}
 frontend = WavFrontendOnline(**args)
 
 
@@ -36,6 +39,8 @@ chunk_stride = chunk_size[1] * 960  # 600ms、480ms
 
 cache = {}
 total_chunk_num = int(((speech.shape[-1]) - 1) / chunk_stride + 1)
+
+is_first = True
 
 
 def init_cache(cache: dict = {}):
@@ -73,6 +78,9 @@ def init_cache(cache: dict = {}):
 
 
 init_cache(cache)
+n_feats = None
+cif_hidden = None
+cif_alphas = None
 
 for i in range(total_chunk_num):
     speech_chunk = speech[0, i * chunk_stride: (i + 1) * chunk_stride]
@@ -82,7 +90,7 @@ for i in range(total_chunk_num):
     n = int((audio_sample.shape[-1]) // chunk_stride_samples + int(is_final))
     m = int((audio_sample.shape[-1]) % chunk_stride_samples * (1 - int(is_final)))
     for j in range(n):
-        is_final = is_final and j == n-1
+        is_final = is_final and j == n - 1
         audio_sample_i = audio_sample[j * chunk_stride_samples: (j + 1) * chunk_stride_samples]
         if is_final and len(audio_sample_i) < 960:
             cache["encoder"]["tail_chunk"] = True
@@ -91,20 +99,37 @@ for i in range(total_chunk_num):
                 speech.device
             )
         else:
-            feats, feats_len = load_audio(torch.unsqueeze(audio_sample_i, 0), is_final=is_final, cache=cache["frontend"])
+            feats, feats_len = load_audio(torch.unsqueeze(audio_sample_i, 0), is_final=is_final,
+                                          cache=cache["frontend"])
             feats_len = torch.tensor(feats_len, dtype=torch.int32)
-        ort_inputs = {"speech": to_numpy(feats), "speech_lengths": to_numpy(feats_len)}
-        # ort_inputs = {ort_session.get_inputs()[0], "speech_lengths": to_numpy(torch.Tensor([128]))}
-        enc, enc_len, alphas = encoder_session.run(None, ort_inputs)
-        acoustic_embeds = torch.randn(2, 10, 512).type(torch.float32)
-        acoustic_embeds_len = torch.tensor([5, 10], dtype=torch.int32)
-        ort_inputs1 = {"enc": enc, "enc_len": enc_len, "acoustic_embeds": to_numpy(acoustic_embeds),
-                       "acoustic_embeds_len": to_numpy(acoustic_embeds_len)}
-        cache_num = 16
-        for v in range(cache_num):
-            ort_inputs1.update({f"in_cache_{v}": to_numpy(torch.zeros(2, 512, 10))})
-        decode_outputs = decoder_session.run(None, ort_inputs1)
-        logits = decode_outputs[0]
-        ids = decode_outputs[1]
+        # ort_inputs = {"speech": to_numpy(feats), "speech_lengths": to_numpy(feats_len)}
+        # # ort_inputs = {ort_session.get_inputs()[0], "speech_lengths": to_numpy(torch.Tensor([128]))}
+        # enc, enc_len, alphas = encoder_session.run(None, ort_inputs)
+        # acoustic_embeds = torch.randn(2, 10, 512).type(torch.float32)
+        # acoustic_embeds_len = torch.tensor([5, 10], dtype=torch.int32)
+        # ort_inputs1 = {"enc": enc, "enc_len": enc_len, "acoustic_embeds": to_numpy(acoustic_embeds),
+        #                "acoustic_embeds_len": to_numpy(acoustic_embeds_len)}
+        # cache_num = 16
+        # for v in range(cache_num):
+        #     ort_inputs1.update({f"in_cache_{v}": to_numpy(torch.zeros(2, 512, 10))})
+        # decode_outputs = decoder_session.run(None, ort_inputs1)
+        # logits = decode_outputs[0]
+        # ids = decode_outputs[1]
+
+        if is_first:
+            ort_inputs = {"speech": to_numpy(feats), "feats": to_numpy(torch.zeros(1, 5, 560)),
+                          "cif_hidden": to_numpy(torch.randn(1, 1, 512)), "cif_alphas": to_numpy(torch.randn(1, 1))}
+        else:
+            ort_inputs = {"speech": to_numpy(feats), "feats": n_feats, "cif_hidden": cif_hidden,
+                          "cif_alphas": cif_alphas}
+
+        output = model_session.run(None, ort_inputs)
+        # decode_outputs = decoder_session.run(None, ort_inputs1)
+        logits = output[0]
+        ids = output[1]
+        n_feats = output[2]
+        cif_hidden = output[3]
+        cif_alphas = output[4]
+        is_first = False
         print(ids)
     cache["prev_samples"] = audio_sample[:-m]
