@@ -5,13 +5,12 @@ import torchaudio
 
 from funasr.frontends.wav_frontend import WavFrontendOnline
 
-base_path = (r"D:\work\asrapp\FunASR-main\examples\industrial_data_pretraining\paraformer_streaming\iic"
-             r"\speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online\\")
+base_path = (r"D:\work\asrapp\FunASR-main\examples\industrial_data_pretraining\paraformer_streaming\speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online-onnx/")
 
-encoder_session = onnxruntime.InferenceSession(base_path + "model.quant.onnx")
-decoder_session = onnxruntime.InferenceSession(base_path + "decoder.quant.onnx")
+encoder_session = onnxruntime.InferenceSession(base_path + "model_quant.onnx")
+decoder_session = onnxruntime.InferenceSession(base_path + "decoder_quant.onnx")
 
-model_session = onnxruntime.InferenceSession(base_path + "totalModel_quant.onnx")
+# model_session = onnxruntime.InferenceSession(base_path + "totalModel_quant.onnx")
 
 
 def to_numpy(tensor):
