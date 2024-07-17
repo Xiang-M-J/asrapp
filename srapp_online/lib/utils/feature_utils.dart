@@ -29,8 +29,39 @@ final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontend = 
 final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontendOnline = fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontendOnline").asFunction();
 
 class WavFrontendWithCache {
-  List<int> cache = List.empty(growable: true);
-  
+  List<int>? cache;
+
+  WavFrontendWithCache();
+
+  extractOnlineFeature(List<int> inputs){
+    if(cache != null){
+      inputs.addAll(cache!);
+    }
+    Pointer<Float> waveformPointer = uint8list2FloatPointer(inputs);
+    int sampleNum = inputs.length;
+    int wlen = 25 * 16;
+    int inc = 10 * 16;
+    int m = 1 + (sampleNum - wlen) ~/ inc;
+
+    cache = inputs.sublist(m * inc);
+    int axis1 = (m/6.0).ceil();
+    int axis2 = 7 * 80;
+    Pointer<Pointer<Float>> output = calloc<Pointer<Float>>(axis1 * 4);
+    for (var i = 0; i < axis1; i++) {
+      output[i] = calloc<Float>(axis2 * 4);
+      for (var j = 0; j < axis2; j++) {
+        output[i][j] = 0.0;
+      }
+    }
+    wavFrontend(waveformPointer, output, sampleNum);
+    List<List<double>> fbank = floatMat2FloatList(output, axis1, axis2);
+    calloc.free(waveformPointer);
+    for (var i = 0; i < axis1; i++) {
+      calloc.free(output[i]);
+    }
+    calloc.free(output);
+    return fbank;
+  }
 }
 
 Pointer<Float> uint8list2FloatPointer(List<int> list){
