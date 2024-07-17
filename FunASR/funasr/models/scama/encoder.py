@@ -15,19 +15,19 @@ import torch.nn.functional as F
 from funasr.models.scama.chunk_utilis import overlap_chunk
 import numpy as np
 from funasr.train_utils.device_funcs import to_device
-from funasr.models.transformer.utils.nets_utils import make_pad_mask
+from funasr.models.transformer.utils.nets_utils import make_pad_mask, make_pad_mask_for_tensor
 from funasr.models.sanm.attention import MultiHeadedAttention, MultiHeadedAttentionSANM
 from funasr.models.transformer.embedding import (
     SinusoidalPositionEncoder,
     StreamSinusoidalPositionEncoder,
 )
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.multi_layer_conv import Conv1dLinear
 from funasr.models.transformer.utils.multi_layer_conv import MultiLayeredConv1d
 from funasr.models.transformer.positionwise_feed_forward import (
     PositionwiseFeedForward,  # noqa: H301
 )
-from funasr.models.transformer.utils.repeat import repeat
+from funasr.models.transformer.utils.repeat import repeat, repeat_export
 from funasr.models.transformer.utils.subsampling import Conv2dSubsampling
 from funasr.models.transformer.utils.subsampling import Conv2dSubsampling2
 from funasr.models.transformer.utils.subsampling import Conv2dSubsampling6
@@ -57,15 +57,15 @@ class EncoderLayerSANM(nn.Module):
         super(EncoderLayerSANM, self).__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(in_size)
-        self.norm2 = LayerNorm(size)
+        self.norm1 = LayerNormExport(in_size)
+        self.norm2 = LayerNormExport(size)
         self.dropout = nn.Dropout(dropout_rate)
         self.in_size = in_size
         self.size = size
         self.normalize_before = normalize_before
         self.concat_after = concat_after
-        if self.concat_after:
-            self.concat_linear = nn.Linear(size + size, size)
+        # if self.concat_after:
+        self.concat_linear = nn.Linear(size + size, size)
         self.stochastic_depth_rate = stochastic_depth_rate
         self.dropout_rate = dropout_rate
 
@@ -82,18 +82,18 @@ class EncoderLayerSANM(nn.Module):
             torch.Tensor: Mask tensor (#batch, time).
 
         """
-        skip_layer = False
+        # skip_layer = False
         # with stochastic depth, residual connection `x + f(x)` becomes
         # `x <- x + 1 / (1 - p) * f(x)` at training time.
         stoch_layer_coeff = 1.0
-        if self.training and self.stochastic_depth_rate > 0:
-            skip_layer = torch.rand(1).item() < self.stochastic_depth_rate
-            stoch_layer_coeff = 1.0 / (1 - self.stochastic_depth_rate)
+        # if self.training and self.stochastic_depth_rate > 0:
+        #     skip_layer = torch.rand(1).item() < self.stochastic_depth_rate
+        #     stoch_layer_coeff = 1.0 / (1 - self.stochastic_depth_rate)
 
-        if skip_layer:
-            if cache is not None:
-                x = torch.cat([cache, x], dim=1)
-            return x, mask
+        # if skip_layer:
+        #     if cache is not None:
+        #         x = torch.cat([cache, x], dim=1)
+        #     return x, mask
 
         residual = x
         if self.normalize_before:
@@ -310,9 +310,9 @@ class SANMEncoderChunkOpt(nn.Module):
                 kernel_size,
                 sanm_shfit,
             )
-        self.encoders0 = repeat(
+        self.encoders0 = repeat_export(
             1,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 input_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args0),
@@ -323,9 +323,9 @@ class SANMEncoderChunkOpt(nn.Module):
             ),
         )
 
-        self.encoders = repeat(
+        self.encoders = repeat_export(
             num_blocks - 1,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 output_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args),
@@ -336,7 +336,7 @@ class SANMEncoderChunkOpt(nn.Module):
             ),
         )
         if self.normalize_before:
-            self.after_norm = LayerNorm(output_size)
+            self.after_norm = LayerNormExport(output_size)
 
         self.interctc_layer_idx = interctc_layer_idx
         if len(interctc_layer_idx) > 0:
@@ -363,7 +363,7 @@ class SANMEncoderChunkOpt(nn.Module):
             xs_pad: torch.Tensor,
             ilens: torch.Tensor,
             prev_states: torch.Tensor = None,
-            ctc: CTC = None,
+            ctc = None,
             ind: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Embed positions in tensor.
@@ -375,7 +375,7 @@ class SANMEncoderChunkOpt(nn.Module):
         Returns:
             position embedded tensor and mask
         """
-        masks = (~make_pad_mask(ilens)[:, None, :]).to(xs_pad.device)
+        masks = (~make_pad_mask_for_tensor(ilens)[:, None, :]).to(xs_pad.device)
         xs_pad *= self.output_size() ** 0.5
         if self.embed is None:
             xs_pad = xs_pad
@@ -402,7 +402,7 @@ class SANMEncoderChunkOpt(nn.Module):
             ilens = masks.squeeze(1).sum(1)
             chunk_outs = self.overlap_chunk_cls.gen_chunk_mask(ilens, ind)
             xs_pad, ilens = self.overlap_chunk_cls.split_chunk(xs_pad, ilens, chunk_outs=chunk_outs)
-            masks = (~make_pad_mask(ilens)[:, None, :]).to(xs_pad.device)
+            masks = (~make_pad_mask_for_tensor(ilens)[:, None, :]).to(xs_pad.device)
             mask_shfit_chunk = self.overlap_chunk_cls.get_mask_shfit_chunk(
                 chunk_outs, xs_pad.device, xs_pad.size(0), dtype=xs_pad.dtype
             )
@@ -413,36 +413,36 @@ class SANMEncoderChunkOpt(nn.Module):
         encoder_outs = self.encoders0(xs_pad, masks, None, mask_shfit_chunk, mask_att_chunk_encoder)
         xs_pad, masks = encoder_outs[0], encoder_outs[1]
         intermediate_outs = []
-        if len(self.interctc_layer_idx) == 0:
-            encoder_outs = self.encoders(
-                xs_pad, masks, None, mask_shfit_chunk, mask_att_chunk_encoder
-            )
-            xs_pad, masks = encoder_outs[0], encoder_outs[1]
-        else:
-            for layer_idx, encoder_layer in enumerate(self.encoders):
-                encoder_outs = encoder_layer(
-                    xs_pad, masks, None, mask_shfit_chunk, mask_att_chunk_encoder
-                )
-                xs_pad, masks = encoder_outs[0], encoder_outs[1]
-                if layer_idx + 1 in self.interctc_layer_idx:
-                    encoder_out = xs_pad
-
-                    # intermediate outputs are also normalized
-                    if self.normalize_before:
-                        encoder_out = self.after_norm(encoder_out)
-
-                    intermediate_outs.append((layer_idx + 1, encoder_out))
-
-                    if self.interctc_use_conditioning:
-                        ctc_out = ctc.softmax(encoder_out)
-                        xs_pad = xs_pad + self.conditioning_layer(ctc_out)
+        # if len(self.interctc_layer_idx) == 0:
+        encoder_outs = self.encoders(
+            xs_pad, masks, None, mask_shfit_chunk, mask_att_chunk_encoder
+        )
+        xs_pad, masks = encoder_outs[0], encoder_outs[1]
+        # else:
+        #     for layer_idx, encoder_layer in enumerate(self.encoders):
+        #         encoder_outs = encoder_layer(
+        #             xs_pad, masks, None, mask_shfit_chunk, mask_att_chunk_encoder
+        #         )
+        #         xs_pad, masks = encoder_outs[0], encoder_outs[1]
+        #         if layer_idx + 1 in self.interctc_layer_idx:
+        #             encoder_out = xs_pad
+        #
+        #             # intermediate outputs are also normalized
+        #             if self.normalize_before:
+        #                 encoder_out = self.after_norm(encoder_out)
+        #
+        #             intermediate_outs.append((layer_idx + 1, encoder_out))
+        #
+        #             if self.interctc_use_conditioning:
+        #                 ctc_out = ctc.softmax(encoder_out)
+        #                 xs_pad = xs_pad + self.conditioning_layer(ctc_out)
 
         if self.normalize_before:
             xs_pad = self.after_norm(xs_pad)
 
         olens = masks.squeeze(1).sum(1)
-        if len(intermediate_outs) > 0:
-            return (xs_pad, intermediate_outs), olens, None
+        # if len(intermediate_outs) > 0:
+        #     return (xs_pad, intermediate_outs), olens, None
         return xs_pad, olens, None
 
     def _add_overlap_chunk(self, feats: np.ndarray, cache: dict = {}):
@@ -508,16 +508,16 @@ class SANMEncoderChunkOpt(nn.Module):
         if self.embed is None:
             xs_pad = xs_pad
         else:
-            xs_pad = self.embed(xs_pad, cache)
+            xs_pad = self.embed.forward_export(xs_pad)
         # if cache["tail_chunk"]:
         #     xs_pad = to_device(cache["feats"], device=xs_pad.device)
         # else:
         xs_pad = self._add_overlap_chunk(xs_pad, cache)
-        # if cache["init_opt"]:
-        #     new_cache = cache["opt"]
-        # else:
-        cache_layer_num = len(self.encoders0) + len(self.encoders)
-        new_cache = [None] * cache_layer_num
+        if torch.any(cache["opt"][0]["k"]) and torch.any(cache["opt"][0]["v"]):
+            new_cache = cache["opt"]
+        else:
+            cache_layer_num = len(self.encoders0) + len(self.encoders)
+            new_cache = [None] * cache_layer_num
 
         for layer_idx, encoder_layer in enumerate(self.encoders0):
             encoder_outs = encoder_layer.forward_chunk(

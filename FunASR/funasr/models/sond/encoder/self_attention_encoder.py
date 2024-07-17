@@ -11,7 +11,7 @@ import numpy as np
 from funasr.models.transformer.utils.nets_utils import make_pad_mask
 from funasr.models.sond.attention import MultiHeadSelfAttention
 from funasr.models.transformer.embedding import SinusoidalPositionEncoder
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.multi_layer_conv import Conv1dLinear
 from funasr.models.transformer.utils.multi_layer_conv import MultiLayeredConv1d
 from funasr.models.transformer.positionwise_feed_forward import (
@@ -44,8 +44,8 @@ class EncoderLayer(nn.Module):
         super(EncoderLayer, self).__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(in_size)
-        self.norm2 = LayerNorm(size)
+        self.norm1 = LayerNormExport(in_size)
+        self.norm2 = LayerNormExport(size)
         self.dropout = nn.Dropout(dropout_rate)
         self.in_size = in_size
         self.size = size
@@ -242,7 +242,7 @@ class SelfAttentionEncoder(AbsEncoder):
             ),
         )
         if self.normalize_before:
-            self.after_norm = LayerNorm(output_size)
+            self.after_norm = LayerNormExport(output_size)
 
         self.interctc_layer_idx = interctc_layer_idx
         if len(interctc_layer_idx) > 0:

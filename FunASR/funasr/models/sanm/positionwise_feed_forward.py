@@ -6,7 +6,7 @@
 
 import torch
 
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 
 
 class PositionwiseFeedForwardDecoderSANM(torch.nn.Module):
@@ -26,7 +26,7 @@ class PositionwiseFeedForwardDecoderSANM(torch.nn.Module):
         self.w_2 = torch.nn.Linear(hidden_units, idim if adim is None else adim, bias=False)
         self.dropout = torch.nn.Dropout(dropout_rate)
         self.activation = activation
-        self.norm = LayerNorm(hidden_units)
+        self.norm = LayerNormExport(hidden_units)
 
     def forward(self, x):
         """Forward function."""

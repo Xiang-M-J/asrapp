@@ -21,13 +21,13 @@ from funasr.models.transformer.embedding import (
     SinusoidalPositionEncoder,
     StreamSinusoidalPositionEncoder,
 )
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.multi_layer_conv import Conv1dLinear
 from funasr.models.transformer.utils.multi_layer_conv import MultiLayeredConv1d
 from funasr.models.transformer.positionwise_feed_forward import (
     PositionwiseFeedForward,  # noqa: H301
 )
-from funasr.models.transformer.utils.repeat import repeat
+from funasr.models.transformer.utils.repeat import repeat, repeat_export
 from funasr.models.transformer.utils.subsampling import Conv2dSubsampling
 from funasr.models.transformer.utils.subsampling import Conv2dSubsampling2
 from funasr.models.transformer.utils.subsampling import Conv2dSubsampling6
@@ -57,8 +57,8 @@ class EncoderLayerSANM(nn.Module):
         super(EncoderLayerSANM, self).__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(in_size)
-        self.norm2 = LayerNorm(size)
+        self.norm1 = LayerNormExport(in_size)
+        self.norm2 = LayerNormExport(size)
         self.dropout = nn.Dropout(dropout_rate)
         self.in_size = in_size
         self.size = size
@@ -318,9 +318,9 @@ class SANMEncoder(nn.Module):
                 lora_alpha,
                 lora_dropout,
             )
-        self.encoders0 = repeat(
+        self.encoders0 = repeat_export(
             1,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 input_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args0),
@@ -331,9 +331,9 @@ class SANMEncoder(nn.Module):
             ),
         )
 
-        self.encoders = repeat(
+        self.encoders = repeat_export(
             num_blocks - 1,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 output_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args),
@@ -344,7 +344,7 @@ class SANMEncoder(nn.Module):
             ),
         )
         if self.normalize_before:
-            self.after_norm = LayerNorm(output_size)
+            self.after_norm = LayerNormExport(output_size)
 
         self.interctc_layer_idx = interctc_layer_idx
         if len(interctc_layer_idx) > 0:
@@ -606,9 +606,9 @@ class SANMTPEncoder(nn.Module):
                 kernel_size,
                 sanm_shfit,
             )
-        self.encoders0 = repeat(
+        self.encoders0 = repeat_export(
             1,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 input_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args0),
@@ -618,9 +618,9 @@ class SANMTPEncoder(nn.Module):
                 concat_after,
             ),
         )
-        self.encoders = repeat(
+        self.encoders = repeat_export(
             num_blocks - 1,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 output_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args),
@@ -631,9 +631,9 @@ class SANMTPEncoder(nn.Module):
                 stochastic_depth_rate,
             ),
         )
-        self.tp_encoders = repeat(
+        self.tp_encoders = repeat_export(
             tp_blocks,
-            lambda lnum: EncoderLayerSANM(
+            EncoderLayerSANM(
                 output_size,
                 output_size,
                 encoder_selfattn_layer(*encoder_selfattn_layer_args),
@@ -645,10 +645,10 @@ class SANMTPEncoder(nn.Module):
             ),
         )
         if self.normalize_before:
-            self.after_norm = LayerNorm(output_size)
+            self.after_norm = LayerNormExport(output_size)
         self.tp_blocks = tp_blocks
         if self.tp_blocks > 0:
-            self.tp_norm = LayerNorm(output_size)
+            self.tp_norm = LayerNormExport(output_size)
     def output_size(self) -> int:
         return self._output_size
     def forward(

@@ -23,7 +23,7 @@ from funasr.models.transformer.embedding import (
     LegacyRelPositionalEncoding,  # noqa: H301
     StreamingRelPositionalEncoding,
 )
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.multi_layer_conv import Conv1dLinear
 from funasr.models.transformer.utils.multi_layer_conv import MultiLayeredConv1d
 from funasr.models.transformer.utils.nets_utils import get_activation
@@ -164,16 +164,16 @@ class EncoderLayer(nn.Module):
         self.feed_forward = feed_forward
         self.feed_forward_macaron = feed_forward_macaron
         self.conv_module = conv_module
-        self.norm_ff = LayerNorm(size)  # for the FNN module
-        self.norm_mha = LayerNorm(size)  # for the MHA module
+        self.norm_ff = LayerNormExport(size)  # for the FNN module
+        self.norm_mha = LayerNormExport(size)  # for the MHA module
         if feed_forward_macaron is not None:
-            self.norm_ff_macaron = LayerNorm(size)
+            self.norm_ff_macaron = LayerNormExport(size)
             self.ff_scale = 0.5
         else:
             self.ff_scale = 1.0
         if self.conv_module is not None:
-            self.norm_conv = LayerNorm(size)  # for the CNN module
-            self.norm_final = LayerNorm(size)  # for the final output of the block
+            self.norm_conv = LayerNormExport(size)  # for the CNN module
+            self.norm_final = LayerNormExport(size)  # for the final output of the block
         self.dropout = nn.Dropout(dropout_rate)
         self.size = size
         self.normalize_before = normalize_before
@@ -515,7 +515,7 @@ class ConformerEncoder(nn.Module):
             ),
         )
         if self.normalize_before:
-            self.after_norm = LayerNorm(output_size)
+            self.after_norm = LayerNormExport(output_size)
 
         self.interctc_layer_idx = interctc_layer_idx
         if len(interctc_layer_idx) > 0:
@@ -722,7 +722,7 @@ class ChunkEncoderLayer(torch.nn.Module):
         feed_forward: torch.nn.Module,
         feed_forward_macaron: torch.nn.Module,
         conv_mod: torch.nn.Module,
-        norm_class: torch.nn.Module = LayerNorm,
+        norm_class: torch.nn.Module = LayerNormExport,
         norm_args: Dict = {},
         dropout_rate: float = 0.0,
     ) -> None:

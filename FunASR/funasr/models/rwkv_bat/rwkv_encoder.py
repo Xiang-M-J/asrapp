@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 from funasr.register import tables
 from funasr.models.rwkv_bat.rwkv import RWKV
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.nets_utils import make_source_mask
 from funasr.models.rwkv_bat.rwkv_subsampling import RWKVConvInput
 
@@ -82,8 +82,8 @@ class RWKVEncoder(torch.nn.Module):
             ]
         )
 
-        self.embed_norm = LayerNorm(output_size)
-        self.final_norm = LayerNorm(output_size)
+        self.embed_norm = LayerNormExport(output_size)
+        self.final_norm = LayerNormExport(output_size)
 
         self._output_size = output_size
         self.context_size = context_size

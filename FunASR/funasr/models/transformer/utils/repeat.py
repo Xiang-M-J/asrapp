@@ -7,8 +7,9 @@
 """Repeat the same layer definition."""
 
 from typing import Dict, List, Optional
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 import torch
+import torch.nn as nn
 
 
 class MultiSequential(torch.nn.Sequential):
@@ -48,6 +49,13 @@ def repeat(N, fn, layer_drop_rate=0.0):
     return MultiSequential(*[fn(n) for n in range(N)], layer_drop_rate=layer_drop_rate)
 
 
+def repeat_export(N, layer):
+    layers = nn.ModuleList()
+    for i in range(N):
+        layers.append(layer)
+    return layers
+
+
 class MultiBlocks(torch.nn.Module):
     """MultiBlocks definition.
     Args:
@@ -61,7 +69,7 @@ class MultiBlocks(torch.nn.Module):
         self,
         block_list: List[torch.nn.Module],
         output_size: int,
-        norm_class: torch.nn.Module = LayerNorm,
+        norm_class: torch.nn.Module = LayerNormExport,
     ) -> None:
         """Construct a MultiBlocks object."""
         super().__init__()

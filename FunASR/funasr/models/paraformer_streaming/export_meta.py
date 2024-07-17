@@ -37,13 +37,36 @@ def export_rebuild_model(model, **kwargs):
     model.export_dynamic_axes = types.MethodType(export_dynamic_axes, model)
     model.export_name = types.MethodType(export_name, model)
 
+    # import copy
+    # import types
+    #
+    # encoder_model = copy.copy(model)
+    # predictor_model = copy.copy(model)
+    # decoder_model = copy.copy(model)
+    #
+    # # encoder
+    # encoder_model.forward = types.MethodType(export_encoder_forward, encoder_model)
+    # encoder_model.export_dummy_inputs = types.MethodType(export_encoder_dummy_inputs, encoder_model)
+    # encoder_model.export_input_names = types.MethodType(export_encoder_input_names, encoder_model)
+    # encoder_model.export_output_names = types.MethodType(export_encoder_output_names, encoder_model)
+    # encoder_model.export_dynamic_axes = types.MethodType(export_encoder_dynamic_axes, encoder_model)
+    # encoder_model.export_name = types.MethodType(export_encoder_name, encoder_model)
+    #
+    # # decoder
+    # decoder_model.forward = types.MethodType(export_decoder_forward, decoder_model)
+    # decoder_model.export_dummy_inputs = types.MethodType(export_decoder_dummy_inputs, decoder_model)
+    # decoder_model.export_input_names = types.MethodType(export_decoder_input_names, decoder_model)
+    # decoder_model.export_output_names = types.MethodType(export_decoder_output_names, decoder_model)
+    # decoder_model.export_dynamic_axes = types.MethodType(export_decoder_dynamic_axes, decoder_model)
+    # decoder_model.export_name = types.MethodType(export_decoder_name, decoder_model)
+
     return model
 
 
 def export_forward(self, speech: torch.Tensor,
-                   speech_lengths: torch.Tensor, feats, cif_hidden, cif_alphas):
+                   speech_lengths: torch.Tensor, feats, cif_hidden, cif_alphas, is_final, encoder_opt, decoder_opt, decode_fsmn):
 
-    return self.forward_export(speech, speech_lengths, feats, cif_hidden, cif_alphas)
+    return self.forward_export(speech, speech_lengths, feats, cif_hidden, cif_alphas, is_final, encoder_opt, decoder_opt, decode_fsmn)
 
 
 def export_dummy_inputs(self):
@@ -52,15 +75,15 @@ def export_dummy_inputs(self):
     feats = torch.zeros(1, 5, 560)
     cif_hidden = torch.randn(1, 1, 512)
     cif_alphas = torch.randn(1, 1)
-    # flag = torch.ones([6], dtype=torch.int32)
-    # encoder_opt = torch.randn(50, 2, 2, 4, 10, 128)
-    # decoder_opt = torch.randn(16, 2, 2, 4, 10, 128)
-    # decode_fsmn = torch.randn(16, 2, 512, 12)
-    return speech, speech_lengths, feats, cif_hidden, cif_alphas
+    is_final = torch.ones([1], dtype=torch.int32)
+    encoder_opt = torch.zeros(50, 2, 1, 4, 10, 128)
+    decoder_opt = torch.zeros(16, 2, 1, 4, 10, 128)
+    decode_fsmn = torch.zeros(16, 1, 512, 11)
+    return speech, speech_lengths, feats, cif_hidden, cif_alphas, is_final, encoder_opt, decoder_opt, decode_fsmn
 
 
 def export_input_names(self):
-    return ["speech", "speech_lengths", "feats", "cif_hidden", "cif_alphas"]
+    return ["speech", "speech_lengths", "feats", "cif_hidden", "cif_alphas", "is_final", "encoder_opt", "decoder_opt", "decode_fsmn"]
 
 
 def export_dynamic_axes(self):
@@ -72,17 +95,17 @@ def export_dynamic_axes(self):
         "feats": {0: "batch_size"},
         "cif_hidden": {0: "batch_size"},
         "cif_alphas": {0: "batch_size"},
-        # "encoder_opt": {2: "batch_size"},
-        # "decoder_opt": {2: "batch_size"},
-        # "decode_fsmn": {1: "batch_size", 3: "fsmn_length"},
+        "encoder_opt": {2: "batch_size"},
+        "decoder_opt": {2: "batch_size"},
+        "decode_fsmn": {1: "batch_size", 3: "fsmn_length"},
         "decoder_out": {0: "batch_size"},
         "pre_token_length": {0: "batch_size"},
         "feats_o": {0: "batch_size", 1: "feats_length"},
         "cif_hidden_o": {0: "batch_size"},
         "cif_alphas_o": {0: "batch_size"},
-        # "encoder_opt_o": {2: "batch_size"},
-        # "decoder_opt_o": {2: "batch_size"},
-        # "decode_fsmn_o": {1: "batch_size"},
+        "encoder_opt_o": {2: "batch_size"},
+        "decoder_opt_o": {2: "batch_size"},
+        "decode_fsmn_o": {1: "batch_size"},
     }
 
 
@@ -91,7 +114,7 @@ def export_name(self):
 
 
 def export_output_names(self):
-    return ["decoder_out", "pre_token_length", "feats_o", "cif_hidden_o", "cif_alphas_o"]
+    return ["decoder_out", "pre_token_length", "feats_o", "cif_hidden_o", "cif_alphas_o", "encoder_opt_o", "decoder_opt_o", "decode_fsmn_o"]
 
 
 # def export_rebuild_model(model, **kwargs):

@@ -9,7 +9,7 @@ References:
 import torch
 
 from funasr.models.transformer.utils.nets_utils import get_activation
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 
 
 class ConvolutionalSpatialGatingUnit(torch.nn.Module):
@@ -26,7 +26,7 @@ class ConvolutionalSpatialGatingUnit(torch.nn.Module):
         super().__init__()
 
         n_channels = size // 2  # split feats channels
-        self.norm = LayerNorm(n_channels)
+        self.norm = LayerNormExport(n_channels)
         self.conv = torch.nn.Conv1d(
             n_channels,
             n_channels,

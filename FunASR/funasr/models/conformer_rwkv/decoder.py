@@ -15,7 +15,7 @@ from funasr.models.transformer.attention import MultiHeadedAttention
 from funasr.models.transformer.utils.dynamic_conv import DynamicConvolution
 from funasr.models.transformer.utils.dynamic_conv2d import DynamicConvolution2D
 from funasr.models.transformer.embedding import PositionalEncoding
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.lightconv import LightweightConvolution
 from funasr.models.transformer.utils.lightconv2d import LightweightConvolution2D
 from funasr.models.transformer.utils.mask import subsequent_mask
@@ -75,9 +75,9 @@ class DecoderLayer(nn.Module):
         # self.self_attn = self_attn.to(torch.bfloat16)
         self.src_attn = src_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(size)
-        self.norm2 = LayerNorm(size)
-        self.norm3 = LayerNorm(size)
+        self.norm1 = LayerNormExport(size)
+        self.norm2 = LayerNormExport(size)
+        self.norm3 = LayerNormExport(size)
         self.dropout = nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
         self.concat_after = concat_after
@@ -101,7 +101,7 @@ class DecoderLayer(nn.Module):
         self.args = args
         self.ln0 = None
         if self.layer_id == 0 and not args.get("ln0", True):
-            self.ln0 = LayerNorm(args.n_embd)
+            self.ln0 = LayerNormExport(args.n_embd)
             if args.get("init_rwkv", True):
                 print("init_rwkv")
                 layer_id = 0
@@ -237,7 +237,7 @@ class BaseTransformerDecoder(nn.Module, BatchScorerInterface):
 
         self.normalize_before = normalize_before
         if self.normalize_before:
-            self.after_norm = LayerNorm(attention_dim)
+            self.after_norm = LayerNormExport(attention_dim)
         if use_output_layer:
             self.output_layer = torch.nn.Linear(attention_dim, vocab_size)
         else:

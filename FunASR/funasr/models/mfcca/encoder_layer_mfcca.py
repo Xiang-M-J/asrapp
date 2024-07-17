@@ -11,7 +11,7 @@ import torch
 
 from torch import nn
 
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from torch.autograd import Variable
 
 
@@ -58,16 +58,16 @@ class Encoder_Conformer_Layer(nn.Module):
         self.feed_forward = feed_forward
         self.feed_forward_macaron = feed_forward_macaron
         self.conv_module = conv_module
-        self.norm_ff = LayerNorm(size)  # for the FNN module
-        self.norm_mha = LayerNorm(size)  # for the MHA module
+        self.norm_ff = LayerNormExport(size)  # for the FNN module
+        self.norm_mha = LayerNormExport(size)  # for the MHA module
         if feed_forward_macaron is not None:
-            self.norm_ff_macaron = LayerNorm(size)
+            self.norm_ff_macaron = LayerNormExport(size)
             self.ff_scale = 0.5
         else:
             self.ff_scale = 1.0
         if self.conv_module is not None:
-            self.norm_conv = LayerNorm(size)  # for the CNN module
-            self.norm_final = LayerNorm(size)  # for the final output of the block
+            self.norm_conv = LayerNormExport(size)  # for the CNN module
+            self.norm_final = LayerNormExport(size)  # for the final output of the block
         self.dropout = nn.Dropout(dropout_rate)
         self.size = size
         self.normalize_before = normalize_before
@@ -215,7 +215,7 @@ class EncoderLayer(nn.Module):
             concat_after,
             cca_pos=0,
         )
-        self.norm_mha = LayerNorm(size)  # for the MHA module
+        self.norm_mha = LayerNormExport(size)  # for the MHA module
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x_input, mask, channel_size, cache=None):

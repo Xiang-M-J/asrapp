@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 import numpy as np
 from funasr.models.transformer.utils.nets_utils import make_pad_mask
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.encoder.abs_encoder import AbsEncoder
 import math
 from funasr.models.transformer.utils.repeat import repeat
@@ -140,7 +140,7 @@ class ConvEncoder(AbsEncoder):
             )
 
         if self.out_norm:
-            self.after_norm = LayerNorm(out_units)
+            self.after_norm = LayerNormExport(out_units)
 
     def output_size(self) -> int:
         return self.num_units

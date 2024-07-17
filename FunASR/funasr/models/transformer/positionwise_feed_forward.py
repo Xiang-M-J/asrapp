@@ -8,7 +8,7 @@
 
 import torch
 
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 
 
 class PositionwiseFeedForward(torch.nn.Module):

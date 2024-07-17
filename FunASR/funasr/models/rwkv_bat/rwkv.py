@@ -6,7 +6,7 @@
 import torch
 from typing import Dict, Optional, Tuple
 
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.rwkv_bat.rwkv_feed_forward import FeedForward
 from funasr.models.rwkv_bat.rwkv_attention import EncoderSelfAttention, DecoderSelfAttention
 
@@ -43,8 +43,8 @@ class RWKV(torch.nn.Module):
         """Construct a RWKV object."""
         super().__init__()
 
-        self.layer_norm_att = LayerNorm(size)
-        self.layer_norm_ffn = LayerNorm(size)
+        self.layer_norm_att = LayerNormExport(size)
+        self.layer_norm_ffn = LayerNormExport(size)
 
         self.att = EncoderSelfAttention(
             size, attention_size, context_size, block_id, att_dropout_rate, num_blocks
@@ -109,8 +109,8 @@ class RWKVDecoderLayer(torch.nn.Module):
         """Construct a RWKV object."""
         super().__init__()
 
-        self.layer_norm_att = LayerNorm(size)
-        self.layer_norm_ffn = LayerNorm(size)
+        self.layer_norm_att = LayerNormExport(size)
+        self.layer_norm_ffn = LayerNormExport(size)
 
         self.att = DecoderSelfAttention(
             size, attention_size, context_size, block_id, att_dropout_rate, num_blocks

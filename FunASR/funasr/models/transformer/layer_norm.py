@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 
 
-class LayerNorm(torch.nn.LayerNorm):
+class LayerNormExport(torch.nn.LayerNorm):
     """Layer normalization module.
 
     Args:
@@ -20,8 +20,8 @@ class LayerNorm(torch.nn.LayerNorm):
     """
 
     def __init__(self, nout, dim=-1):
-        """Construct an LayerNorm object."""
-        super(LayerNorm, self).__init__(nout, eps=1e-12)
+        """Construct an LayerNormExport object."""
+        super(LayerNormExport, self).__init__(nout, eps=1e-12)
         self.dim = dim
 
     def forward(self, x):
@@ -35,9 +35,38 @@ class LayerNorm(torch.nn.LayerNorm):
 
         """
         if self.dim == -1:
-            return super(LayerNorm, self).forward(x)
-        return super(LayerNorm, self).forward(x.transpose(self.dim, -1)).transpose(self.dim, -1)
+            return super(LayerNormExport, self).forward(x)
+        return super(LayerNormExport, self).forward(x.transpose(self.dim, -1)).transpose(self.dim, -1)
 
+
+class LayerNormExport(torch.nn.Module):
+    """Layer normalization module.
+
+    Args:
+        nout (int): Output dim size.
+        dim (int): Dimension to be normalized.
+
+    """
+
+    def __init__(self, nout, dim=-1,):
+        """Construct an LayerNormExport object."""
+        super().__init__()
+        self.dim = dim
+        self.layer_norm = nn.LayerNorm(nout, eps=1e-12)
+
+    def forward(self, x):
+        """Apply layer normalization.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Normalized tensor.
+
+        """
+        if self.dim == -1:
+            return self.layer_norm(x)
+        return self.layer_norm(x.transpose(self.dim, -1)).transpose(self.dim, -1)
 
 class GlobalLayerNorm(nn.Module):
     """Calculate Global Layer Normalization.

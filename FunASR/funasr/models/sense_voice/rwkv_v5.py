@@ -413,11 +413,11 @@ class RWKV_CMix_x052(MyModule):
 #         self.args = args
 #         self.layer_id = layer_id
 #
-#         self.ln1 = nn.LayerNorm(args.n_embd)
-#         self.ln2 = nn.LayerNorm(args.n_embd)
+#         self.ln1 = nn.LayerNormExport(args.n_embd)
+#         self.ln2 = nn.LayerNormExport(args.n_embd)
 #
 #         if self.layer_id == 0:
-#             self.ln0 = nn.LayerNorm(args.n_embd)
+#             self.ln0 = nn.LayerNormExport(args.n_embd)
 #
 #         self.att = RWKV_Tmix_x060(args, layer_id)
 #
@@ -546,7 +546,7 @@ class RWKVLayer(nn.Module):
 #
 #         self.blocks = nn.ModuleList([Block(args, i) for i in range(args.n_layer)])
 #
-#         self.ln_out = nn.LayerNorm(args.n_embd)
+#         self.ln_out = nn.LayerNormExport(args.n_embd)
 #         self.head = nn.Linear(args.n_embd, args.vocab_size, bias=False)
 #
 #         if args.dropout > 0:

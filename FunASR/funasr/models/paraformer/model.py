@@ -74,13 +74,14 @@ class Paraformer(torch.nn.Module):
     ):
 
         super().__init__()
-
-        if specaug is not None:
-            specaug_class = tables.specaug_classes.get(specaug)
-            specaug = specaug_class(**specaug_conf)
-        if normalize is not None:
-            normalize_class = tables.normalize_classes.get(normalize)
-            normalize = normalize_class(**normalize_conf)
+        specaug = None
+        # if specaug is not None:
+        #     specaug_class = tables.specaug_classes.get(specaug)
+        #     specaug = specaug_class(**specaug_conf)
+        # if normalize is not None:
+        #     normalize_class = tables.normalize_classes.get(normalize)
+        #     normalize = normalize_class(**normalize_conf)
+        normalize = None
         encoder_class = tables.encoder_classes.get(encoder)
         encoder = encoder_class(input_size=input_size, **encoder_conf)
         encoder_output_size = encoder.output_size()

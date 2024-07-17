@@ -232,11 +232,11 @@ class RWKV_ChannelMix(torch.jit.ScriptModule):
 #         self.args = args
 #         self.layer_id = layer_id
 #
-#         self.ln1 = nn.LayerNorm(args.n_embd)
-#         self.ln2 = nn.LayerNorm(args.n_embd)
+#         self.ln1 = nn.LayerNormExport(args.n_embd)
+#         self.ln2 = nn.LayerNormExport(args.n_embd)
 #
 #         if self.layer_id == 0:
-#             self.ln0 = nn.LayerNorm(args.n_embd)
+#             self.ln0 = nn.LayerNormExport(args.n_embd)
 #
 #         self.att = RWKV_Tmix_x060(args, layer_id)
 #

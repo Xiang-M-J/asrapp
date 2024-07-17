@@ -14,7 +14,7 @@ import logging
 from funasr.models.transformer.attention import MultiHeadedAttention
 from funasr.models.lcbnet.attention import MultiHeadedAttentionReturnWeight
 from funasr.models.transformer.embedding import PositionalEncoding
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 
 from funasr.models.transformer.utils.nets_utils import make_pad_mask
 from funasr.models.transformer.positionwise_feed_forward import PositionwiseFeedForward
@@ -58,8 +58,8 @@ class EncoderLayer(nn.Module):
         super(EncoderLayer, self).__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(size)
-        self.norm2 = LayerNorm(size)
+        self.norm1 = LayerNormExport(size)
+        self.norm2 = LayerNormExport(size)
         self.dropout = nn.Dropout(dropout_rate)
         self.size = size
         self.normalize_before = normalize_before
@@ -195,7 +195,7 @@ class TransformerTextEncoder(nn.Module):
             ),
         )
         if self.normalize_before:
-            self.after_norm = LayerNorm(output_size)
+            self.after_norm = LayerNormExport(output_size)
 
     def output_size(self) -> int:
         return self._output_size
@@ -273,9 +273,9 @@ class SelfSrcAttention(nn.Module):
         self.feed_forward = PositionwiseFeedForward(
             attention_dim, linear_units, positional_dropout_rate
         )
-        self.norm1 = LayerNorm(size)
-        self.norm2 = LayerNorm(size)
-        self.norm3 = LayerNorm(size)
+        self.norm1 = LayerNormExport(size)
+        self.norm2 = LayerNormExport(size)
+        self.norm3 = LayerNormExport(size)
         self.dropout = nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
         self.concat_after = concat_after
@@ -367,9 +367,9 @@ class ConvPredictor(nn.Module):
     ):
         super().__init__()
         self.atten = MultiHeadedAttention(attention_heads, size, attention_dropout_rate)
-        self.norm1 = LayerNorm(size)
+        self.norm1 = LayerNormExport(size)
         self.feed_forward = PositionwiseFeedForward(size, linear_units, attention_dropout_rate)
-        self.norm2 = LayerNorm(size)
+        self.norm2 = LayerNormExport(size)
         self.pad = nn.ConstantPad1d((l_order, r_order), 0)
         self.conv1d = nn.Conv1d(size, size, l_order + r_order + 1, groups=size)
         self.output_linear = nn.Linear(size, 1)

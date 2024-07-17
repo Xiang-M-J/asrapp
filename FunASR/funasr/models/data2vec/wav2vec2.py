@@ -345,7 +345,7 @@ class TransformerSentenceEncoderLayer(nn.Module):
         self_attn_padding_mask: torch.Tensor = None,
     ):
         """
-        LayerNorm is applied either before or after the self-attention/ffn
+        LayerNormExport is applied either before or after the self-attention/ffn
         modules similar to the original Transformer imlementation.
         """
         residual = x

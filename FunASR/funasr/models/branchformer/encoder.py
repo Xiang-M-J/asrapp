@@ -32,7 +32,7 @@ from funasr.models.transformer.embedding import (  # noqa: H301
     RelPositionalEncoding,
     ScaledPositionalEncoding,
 )
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.utils.repeat import repeat
 from funasr.models.transformer.utils.subsampling import (
     Conv2dSubsampling,
@@ -86,10 +86,10 @@ class BranchformerEncoderLayer(torch.nn.Module):
         self.use_two_branches = (attn is not None) and (cgmlp is not None)
 
         if attn is not None:
-            self.norm_mha = LayerNorm(size)  # for the MHA module
+            self.norm_mha = LayerNormExport(size)  # for the MHA module
         if cgmlp is not None:
-            self.norm_mlp = LayerNorm(size)  # for the MLP module
-        self.norm_final = LayerNorm(size)  # for the final output of the block
+            self.norm_mlp = LayerNormExport(size)  # for the MLP module
+        self.norm_final = LayerNormExport(size)  # for the final output of the block
 
         self.dropout = torch.nn.Dropout(dropout_rate)
 
@@ -469,7 +469,7 @@ class BranchformerEncoder(nn.Module):
                 stochastic_depth_rate[lnum],
             ),
         )
-        self.after_norm = LayerNorm(output_size)
+        self.after_norm = LayerNormExport(output_size)
 
     def output_size(self) -> int:
         return self._output_size

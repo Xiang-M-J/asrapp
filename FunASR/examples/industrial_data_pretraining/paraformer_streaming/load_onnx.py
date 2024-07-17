@@ -1,3 +1,4 @@
+import numpy as np
 import onnxruntime
 import torch
 import torchaudio
@@ -77,6 +78,21 @@ def init_cache(cache: dict = {}):
     return cache
 
 
+import json
+
+
+class Tokenizer:
+    def __init__(self, vocab_path=""):
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            vocab = json.load(f)
+        self.vocab = vocab
+
+    def id2token(self, ids):
+        tokens = [self.vocab[id] for id in ids]
+
+        return tokens
+
+tokenizer = Tokenizer(r"D:\work\asrapp\FunASR\examples\industrial_data_pretraining\bicif_paraformer\iic\speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch\tokens.json")
 init_cache(cache)
 n_feats = None
 cif_hidden = None
@@ -102,34 +118,45 @@ for i in range(total_chunk_num):
             feats, feats_len = load_audio(torch.unsqueeze(audio_sample_i, 0), is_final=is_final,
                                           cache=cache["frontend"])
             feats_len = torch.tensor(feats_len, dtype=torch.int32)
-        # ort_inputs = {"speech": to_numpy(feats), "speech_lengths": to_numpy(feats_len)}
-        # # ort_inputs = {ort_session.get_inputs()[0], "speech_lengths": to_numpy(torch.Tensor([128]))}
-        # enc, enc_len, alphas = encoder_session.run(None, ort_inputs)
-        # acoustic_embeds = torch.randn(2, 10, 512).type(torch.float32)
-        # acoustic_embeds_len = torch.tensor([5, 10], dtype=torch.int32)
-        # ort_inputs1 = {"enc": enc, "enc_len": enc_len, "acoustic_embeds": to_numpy(acoustic_embeds),
-        #                "acoustic_embeds_len": to_numpy(acoustic_embeds_len)}
-        # cache_num = 16
-        # for v in range(cache_num):
-        #     ort_inputs1.update({f"in_cache_{v}": to_numpy(torch.zeros(2, 512, 10))})
-        # decode_outputs = decoder_session.run(None, ort_inputs1)
-        # logits = decode_outputs[0]
-        # ids = decode_outputs[1]
-
-        if is_first:
-            ort_inputs = {"speech": to_numpy(feats), "feats": to_numpy(torch.zeros(1, 5, 560)),
-                          "cif_hidden": to_numpy(torch.randn(1, 1, 512)), "cif_alphas": to_numpy(torch.randn(1, 1))}
-        else:
-            ort_inputs = {"speech": to_numpy(feats), "feats": n_feats, "cif_hidden": cif_hidden,
-                          "cif_alphas": cif_alphas}
-
-        output = model_session.run(None, ort_inputs)
-        # decode_outputs = decoder_session.run(None, ort_inputs1)
-        logits = output[0]
-        ids = output[1]
-        n_feats = output[2]
-        cif_hidden = output[3]
-        cif_alphas = output[4]
-        is_first = False
-        print(ids)
+        ort_inputs = {"speech": to_numpy(feats), "speech_lengths": to_numpy(feats_len)}
+        # ort_inputs = {ort_session.get_inputs()[0], "speech_lengths": to_numpy(torch.Tensor([128]))}
+        enc, enc_len, alphas = encoder_session.run(None, ort_inputs)
+        print(enc_len)
+        acoustic_embeds = torch.zeros(2, 10, 512).type(torch.float32)
+        acoustic_embeds_len = torch.tensor([5, 10], dtype=torch.int32)
+        ort_inputs1 = {"enc": enc, "enc_len": enc_len, "acoustic_embeds": to_numpy(acoustic_embeds),
+                       "acoustic_embeds_len": to_numpy(acoustic_embeds_len)}
+        cache_num = 16
+        for v in range(cache_num):
+            ort_inputs1.update({f"in_cache_{v}": to_numpy(torch.zeros(2, 512, 10))})
+        decode_outputs = decoder_session.run(None, ort_inputs1)
+        logits = decode_outputs[0]
+        ids = decode_outputs[1]
+        # if feats.shape[1] != 10:
+        #     feats = torch.cat((feats, torch.zeros([1, 10 - feats.shape[1], feats.shape[2]])), dim=1)
+        # if is_first:
+        #     ort_inputs = {"speech": to_numpy(feats), "feats": to_numpy(torch.zeros(1, 5, 560)),
+        #                   "cif_hidden": to_numpy(torch.zeros(1, 1, 512)), "cif_alphas": to_numpy(torch.zeros(1, 1))}
+        # else:
+        #     ort_inputs = {"speech": to_numpy(feats), "feats": n_feats, "cif_hidden": cif_hidden,
+        #                   "cif_alphas": cif_alphas}
+        #
+        # output = model_session.run(None, ort_inputs)
+        # # decode_outputs = decoder_session.run(None, ort_inputs1)
+        # logits = output[0]
+        # # ids = output[1]
+        # n_feats = output[2]
+        # cif_hidden = output[3]
+        # cif_alphas = output[4]
+        # is_first = False
+        # yseq = logits.argmax(axis=-1)
+        # if yseq.shape[0] == 1:
+        #     yseq = yseq[0]
+        # # idx = np.where(yseq == 2)
+        # # idx = list(yseq).index(2)
+        # info = tokenizer.id2token(yseq)
+        for id in ids:
+            info = tokenizer.id2token(id)
+            print(info)
+        # print(ids)
     cache["prev_samples"] = audio_sample[:-m]

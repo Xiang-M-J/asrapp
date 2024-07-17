@@ -29,7 +29,7 @@ from funasr.models.transformer.embedding import (  # noqa: H301
     RelPositionalEncoding,
     ScaledPositionalEncoding,
 )
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.positionwise_feed_forward import (
     PositionwiseFeedForward,
 )
@@ -78,14 +78,14 @@ class EBranchformerEncoderLayer(torch.nn.Module):
         self.feed_forward_macaron = feed_forward_macaron
         self.ff_scale = 1.0
         if self.feed_forward is not None:
-            self.norm_ff = LayerNorm(size)
+            self.norm_ff = LayerNormExport(size)
         if self.feed_forward_macaron is not None:
             self.ff_scale = 0.5
-            self.norm_ff_macaron = LayerNorm(size)
+            self.norm_ff_macaron = LayerNormExport(size)
 
-        self.norm_mha = LayerNorm(size)  # for the MHA module
-        self.norm_mlp = LayerNorm(size)  # for the MLP module
-        self.norm_final = LayerNorm(size)  # for the final output of the block
+        self.norm_mha = LayerNormExport(size)  # for the MHA module
+        self.norm_mlp = LayerNormExport(size)  # for the MLP module
+        self.norm_final = LayerNormExport(size)  # for the final output of the block
 
         self.dropout = torch.nn.Dropout(dropout_rate)
 
@@ -364,7 +364,7 @@ class EBranchformerEncoder(nn.Module):
             ),
             layer_drop_rate,
         )
-        self.after_norm = LayerNorm(output_size)
+        self.after_norm = LayerNormExport(output_size)
 
         if interctc_layer_idx is None:
             interctc_layer_idx = []

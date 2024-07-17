@@ -22,6 +22,8 @@ import 'package:srapp_online/utils/type_converter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:logger/logger.dart';
 
+// 简化分段模型的操作，只要检测到语音段，就把整个分段全部认为是语音段
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -69,8 +71,7 @@ class AsrScreenState extends State<AsrScreen>
   int startIdx = 0;
   int step = 9600;
   int lastWaveformLength = 0;
-  List<Map<int, List<int>>> voice =
-      List<Map<int, List<int>>>.empty(growable: true);
+  List<List<int>> voice = List<List<int>>.empty(growable: true);
 
   FlutterSoundRecorder? mRecorder = FlutterSoundRecorder();
   FlutterSoundPlayer? mPlayer = FlutterSoundPlayer();
@@ -341,7 +342,7 @@ class AsrScreenState extends State<AsrScreen>
       if (waveform.length > 640000) {
         step = 480000;
       } else {
-        step = min(waveform.length - startIdx, 16000);
+        step = min(waveform.length - startIdx, 24000);
       }
       // logger.i("after step: $step,  wavlen ${waveform.length}");
 
@@ -373,26 +374,29 @@ class AsrScreenState extends State<AsrScreen>
           // }
           // // waveform = waveform.sublist(lastStartIdx);
           // startIdx += lastStartIdx;
-          for (var segment in segments) {
-            int segb = segment[0] * 16;
-            int sege = segment[1] * 16;
-            print("分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segb, $sege]");
-            if (segb > startIdx + offset && sege < startIdx + step - offset) {
-              voice.add({0: seg.sublist(segb, sege)});
-              print(0);
-            } else if (segb > startIdx + offset &&
-                sege >= startIdx + step - offset) {
-              voice.add({1: seg.sublist(segb)});
-              print(1);
-            } else if (segb <= startIdx + offset &&
-                sege < startIdx + step - offset) {
-              voice.add({2: seg.sublist(0, sege)});
-              print(2);
-            } else {
-              voice.add({3: seg});
-              print(3);
-            }
-          }
+          int segB = (segments.first[0] * 16 < offset) ? 0 : segments.first[0] * 16;
+          int segE = (segments.last[1] * 16 > seg.length - offset) ? seg.length : segments.last[1] * 16 ;
+          voice.add(seg.sublist(segB, segE));
+          // for (var segment in segments) {
+          //   int segb = segment[0] * 16;
+          //   int sege = segment[1] * 16;
+          //   print("分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segb, $sege]");
+          //   if (segb > startIdx + offset && sege < startIdx + step - offset) {
+          //     voice.add({0: seg.sublist(segb, sege)});
+          //     print(0);
+          //   } else if (segb > startIdx + offset &&
+          //       sege >= startIdx + step - offset) {
+          //     voice.add({1: seg.sublist(segb)});
+          //     print(1);
+          //   } else if (segb <= startIdx + offset &&
+          //       sege < startIdx + step - offset) {
+          //     voice.add({2: seg.sublist(0, sege)});
+          //     print(2);
+          //   } else {
+          //     voice.add({3: seg});
+          //     print(3);
+          //   }
+          // }
         }
       }
       // if(waveform.length > 64000){
@@ -425,8 +429,12 @@ class AsrScreenState extends State<AsrScreen>
           lastVoiceLength = 0;
           return;}
         Map? result = await speechRecognize(cacheVoice);
-        lastStepResult += result?["char"].join(" ") + "，";
-        resultController.text = lastStepResult;
+        setState(() {
+          lastStepResult += result?["char"].join(" ") + "，";
+          logger.i("final: $lastStepResult");
+          resultController.text = lastStepResult;
+        });
+        
       }else{
         cacheVoice = concatVoice(voice);
         if(cacheVoice == null) {
@@ -435,7 +443,11 @@ class AsrScreenState extends State<AsrScreen>
           return;
         }
         Map? result = await speechRecognize(cacheVoice);
-        resultController.text = lastStepResult + result?["char"].join(" ");
+        
+        setState(() {
+          resultController.text = lastStepResult + result?["char"].join(" ");
+          logger.i("temp: ${resultController.text}");
+        });
       }
 
       lastVoiceLength = voice.length;
@@ -459,10 +471,10 @@ class AsrScreenState extends State<AsrScreen>
     });
   }
 
-  List<int>? concatVoice(List<Map<int, List<int>>> voice) {
+  List<int>? concatVoice(List<List<int>> voice) {
     List<int> cacheVoice = List<int>.empty(growable: true);
     for (var v in voice) {
-      cacheVoice.addAll(v.values.first);
+      cacheVoice.addAll(v);
     }
     // voice.clear();
     if (cacheVoice.length < 800) {

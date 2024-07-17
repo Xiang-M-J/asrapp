@@ -8,9 +8,9 @@ from typing import List, Tuple
 
 from funasr.register import tables
 from funasr.models.scama import utils as myutils
-from funasr.models.transformer.utils.repeat import repeat
+from funasr.models.transformer.utils.repeat import repeat, repeat_export
 from funasr.models.transformer.decoder import DecoderLayer
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.embedding import PositionalEncoding
 from funasr.models.transformer.attention import MultiHeadedAttention
 from funasr.models.transformer.utils.nets_utils import make_pad_mask
@@ -61,11 +61,11 @@ class DecoderLayerSANM(torch.nn.Module):
         self.self_attn = self_attn
         self.src_attn = src_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(size)
+        self.norm1 = LayerNormExport(size)
         if self_attn is not None:
-            self.norm2 = LayerNorm(size)
+            self.norm2 = LayerNormExport(size)
         if src_attn is not None:
-            self.norm3 = LayerNorm(size)
+            self.norm3 = LayerNormExport(size)
         self.dropout = torch.nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
         self.concat_after = concat_after
@@ -207,7 +207,7 @@ class DecoderLayerSANM(torch.nn.Module):
         if self.self_attn:
             if self.normalize_before:
                 tgt = self.norm2(tgt)
-            x, fsmn_cache = self.self_attn(tgt, None, fsmn_cache)
+            x, fsmn_cache = self.self_attn.forward_export(tgt, None, fsmn_cache)
             x = residual + self.dropout(x)
 
         if self.src_attn is not None:
@@ -290,7 +290,7 @@ class ParaformerSANMDecoder(BaseTransformerDecoder):
 
         self.normalize_before = normalize_before
         if self.normalize_before:
-            self.after_norm = LayerNorm(attention_dim)
+            self.after_norm = LayerNormExport(attention_dim)
         if use_output_layer:
             self.output_layer = torch.nn.Linear(attention_dim, vocab_size)
         else:
@@ -300,9 +300,9 @@ class ParaformerSANMDecoder(BaseTransformerDecoder):
         self.num_blocks = num_blocks
         if sanm_shfit is None:
             sanm_shfit = (kernel_size - 1) // 2
-        self.decoders = repeat(
+        self.decoders = repeat_export(
             att_layer_num,
-            lambda lnum: DecoderLayerSANM(
+            DecoderLayerSANM(
                 attention_dim,
                 MultiHeadedAttentionSANMDecoder(
                     attention_dim, self_attention_dropout_rate, kernel_size, sanm_shfit=sanm_shfit
@@ -325,9 +325,9 @@ class ParaformerSANMDecoder(BaseTransformerDecoder):
         if num_blocks - att_layer_num <= 0:
             self.decoders2 = None
         else:
-            self.decoders2 = repeat(
+            self.decoders2 = repeat_export(
                 num_blocks - att_layer_num,
-                lambda lnum: DecoderLayerSANM(
+                DecoderLayerSANM(
                     attention_dim,
                     MultiHeadedAttentionSANMDecoder(
                         attention_dim, self_attention_dropout_rate, kernel_size, sanm_shfit=0
@@ -340,9 +340,9 @@ class ParaformerSANMDecoder(BaseTransformerDecoder):
                 ),
             )
 
-        self.decoders3 = repeat(
+        self.decoders3 = repeat_export(
             1,
-            lambda lnum: DecoderLayerSANM(
+            DecoderLayerSANM(
                 attention_dim,
                 None,
                 None,
@@ -465,17 +465,17 @@ class ParaformerSANMDecoder(BaseTransformerDecoder):
         cache: dict = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         x = tgt
-        # if cache["init_fsmn"]:
-        #     fsmn_cache = cache["decode_fsmn"]
-        # else:
-        cache_layer_num = len(self.decoders)
-        fsmn_cache = [None] * cache_layer_num
+        if torch.any(cache["decode_fsmn"]):
+            fsmn_cache = cache["decode_fsmn"]
+        else:
+            cache_layer_num = len(self.decoders)
+            fsmn_cache = [None] * cache_layer_num
 
-        # if cache["init_opt"]:
-        #     opt_cache = cache["opt"]
-        # else:
-        cache_layer_num = len(self.decoders)
-        opt_cache = [None] * cache_layer_num
+        if torch.any(cache["opt"][0]["k"]) and torch.any(cache["opt"][0]["v"]):
+            opt_cache = cache["opt"]
+        else:
+            cache_layer_num = len(self.decoders)
+            opt_cache = [None] * cache_layer_num
 
         for i in range(self.att_layer_num):
             decoder = self.decoders[i]
@@ -1066,9 +1066,9 @@ class ParaformerSANDecoder(BaseTransformerDecoder):
         )
 
         attention_dim = encoder_output_size
-        self.decoders = repeat(
+        self.decoders = repeat_export(
             num_blocks,
-            lambda lnum: DecoderLayer(
+            DecoderLayer(
                 attention_dim,
                 MultiHeadedAttention(attention_heads, attention_dim, self_attention_dropout_rate),
                 MultiHeadedAttention(attention_heads, attention_dim, src_attention_dropout_rate),

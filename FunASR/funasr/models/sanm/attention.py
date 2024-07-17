@@ -546,6 +546,54 @@ class MultiHeadedAttentionSANMDecoder(nn.Module):
             x = x * mask
         return x, cache
 
+    def forward_export(self, inputs, mask, cache=None, mask_shfit_chunk=None):
+        """
+        :param x: (#batch, time1, size).
+        :param mask: Mask tensor (#batch, 1, time)
+        :return:
+        """
+        # print("in fsmn, inputs", inputs.size())
+        b, t, d = inputs.size()
+        # logging.info(
+        #     "mask: {}".format(mask.size()))
+        if mask is not None:
+            mask = torch.reshape(mask, (b, -1, 1))
+            # logging.info("in fsmn, mask: {}, {}".format(mask.size(), mask[0:100:50, :, :]))
+            if mask_shfit_chunk is not None:
+                # logging.info("in fsmn, mask_fsmn: {}, {}".format(mask_shfit_chunk.size(), mask_shfit_chunk[0:100:50, :, :]))
+                mask = mask * mask_shfit_chunk
+            # logging.info("in fsmn, mask_after_fsmn: {}, {}".format(mask.size(), mask[0:100:50, :, :]))
+            # print("in fsmn, mask", mask.size())
+            # print("in fsmn, inputs", inputs.size())
+            inputs = inputs * mask
+
+        x = inputs.transpose(1, 2)
+        b, d, t = x.size()
+        if cache is None:
+            # print("in fsmn, cache is None, x", x.size())
+
+            x = self.pad_fn(x)
+            cache = x
+        else:
+            # print("in fsmn, cache is not None, x", x.size())
+            # x = torch.cat((x, cache), dim=2)[:, :, :-1]
+            # if t < self.kernel_size:
+            #     x = self.pad_fn(x)
+            x = torch.cat((cache[:, :, 1:], x), dim=2)
+            x = x[:, :, -(self.kernel_size + t - 1) :]
+            # print("in fsmn, cache is not None, x_cat", x.size())
+            cache = x
+        x = self.fsmn_block(x)
+        x = x.transpose(1, 2)
+        # print("in fsmn, fsmn_out", x.size())
+        if x.size(1) != inputs.size(1):
+            inputs = inputs[:, -1, :]
+
+        x = x + inputs
+        x = self.dropout(x)
+        if mask is not None:
+            x = x * mask
+        return x, cache
 
 class MultiHeadedAttentionSANMDecoderExport(nn.Module):
     def __init__(self, model):

@@ -433,15 +433,23 @@ class StreamSinusoidalPositionEncoder(torch.nn.Module):
         encoding = torch.cat([torch.sin(scaled_time), torch.cos(scaled_time)], dim=2)
         return encoding.type(dtype)
 
-    def forward(self, x, cache=None):
+    # def forward(self, x, cache=None):
+    #     batch_size, timesteps, input_dim = x.size()
+    #     start_idx = 0
+    #     if cache is not None:
+    #         start_idx = cache["start_idx"]
+    #         cache["start_idx"] += timesteps
+    #     positions = torch.arange(1, timesteps + start_idx + 1)[None, :]
+    #     position_encoding = self.encode(positions, input_dim, x.dtype).to(x.device)
+    #     return x + position_encoding[:, start_idx : start_idx + timesteps]
+
+    def forward_export(self, x):
         batch_size, timesteps, input_dim = x.size()
         start_idx = 0
-        if cache is not None:
-            start_idx = cache["start_idx"]
-            cache["start_idx"] += timesteps
         positions = torch.arange(1, timesteps + start_idx + 1)[None, :]
         position_encoding = self.encode(positions, input_dim, x.dtype).to(x.device)
-        return x + position_encoding[:, start_idx : start_idx + timesteps]
+        return x + position_encoding[:, start_idx: start_idx + timesteps]
+
 
 
 class StreamingRelPositionalEncoding(torch.nn.Module):

@@ -27,7 +27,7 @@ class ModelDimensions:
     n_text_layer: int
 
 
-# class LayerNorm(nn.LayerNorm):
+# class LayerNormExport(nn.LayerNormExport):
 #     def forward(self, x: Tensor) -> Tensor:
 #         return super().forward(x.float()).type(x.dtype)
 

@@ -300,6 +300,42 @@ class AsrScreenState extends State<AsrScreen>
     return segments;
   }
 
+  vadSegmentHandler()async{
+    List<int> seg = waveform.sublist(startIdx, startIdx + step);
+      waveform = waveform.sublist(startIdx + step);
+      List<List<int>>? segments = await vadSegment(seg);
+
+      // print(segments);
+      if (segments == null) {
+        // waveform = waveform.sublist(startIdx + step);
+        // startIdx += step;
+        // startIdx += step;
+      } else {
+        if (segments.isEmpty) {
+          // startIdx += step;
+          // waveform = waveform.sublist(startIdx + step);
+          // startIdx += step;
+        } else {
+          for (var segment in segments) {
+            int segb = segment[0] * 16;
+            int sege = segment[1] * 16;
+            print("分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segb, $sege]");
+            if (segb > startIdx + offset && sege < startIdx + step - offset) {
+              voice.add({0: seg.sublist(segb, sege)});
+            } else if (segb > startIdx + offset &&
+                sege >= startIdx + step - offset) {
+              voice.add({1: seg.sublist(segb)});
+            } else if (segb <= startIdx + offset &&
+                sege < startIdx + step - offset) {
+              voice.add({2: seg.sublist(0, sege)});
+            } else {
+              voice.add({3: seg});
+            }
+          }
+        }
+      }
+  }
+
   speechRecognize(List<int> intData) async {
     Map<String, List<dynamic>>? result;
     result = await speechRecognizer?.predictAsync(intData);
@@ -413,27 +449,21 @@ class AsrScreenState extends State<AsrScreen>
       if (voice.isEmpty) {
         return;
       }
+      List<int>? cacheVoice;
       if(lastVoiceLength == voice.length){
         counter ++;
       }
-      List<int>? cacheVoice;
-      if(counter >= 3){
+      if(counter == 3){
         counter = 0;
         cacheVoice = concatVoice(voice);
         voice.clear();
-        if(cacheVoice == null) {
-          lastVoiceLength = 0;
-          return;}
+        if(cacheVoice == null) return;
         Map? result = await speechRecognize(cacheVoice);
         lastStepResult += result?["char"].join(" ") + "，";
         resultController.text = lastStepResult;
       }else{
         cacheVoice = concatVoice(voice);
-        if(cacheVoice == null) {
-          voice.clear();
-          lastVoiceLength = 0;
-          return;
-        }
+        if(cacheVoice == null) return;
         Map? result = await speechRecognize(cacheVoice);
         resultController.text = lastStepResult + result?["char"].join(" ");
       }

@@ -11,7 +11,7 @@ from typing import Tuple
 from funasr.register import tables
 from funasr.models.scama import utils as myutils
 from funasr.models.transformer.utils.repeat import repeat
-from funasr.models.transformer.layer_norm import LayerNorm
+from funasr.models.transformer.layer_norm import LayerNormExport
 from funasr.models.transformer.embedding import PositionalEncoding
 from funasr.models.paraformer.decoder import DecoderLayerSANM, ParaformerSANMDecoder
 from funasr.models.sanm.positionwise_feed_forward import PositionwiseFeedForwardDecoderSANM
@@ -38,11 +38,11 @@ class ContextualDecoderLayer(torch.nn.Module):
         self.self_attn = self_attn
         self.src_attn = src_attn
         self.feed_forward = feed_forward
-        self.norm1 = LayerNorm(size)
+        self.norm1 = LayerNormExport(size)
         if self_attn is not None:
-            self.norm2 = LayerNorm(size)
+            self.norm2 = LayerNormExport(size)
         if src_attn is not None:
-            self.norm3 = LayerNorm(size)
+            self.norm3 = LayerNormExport(size)
         self.dropout = torch.nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
         self.concat_after = concat_after
@@ -98,7 +98,7 @@ class ContextualBiasDecoder(torch.nn.Module):
         self.size = size
         self.src_attn = src_attn
         if src_attn is not None:
-            self.norm3 = LayerNorm(size)
+            self.norm3 = LayerNormExport(size)
         self.dropout = torch.nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
 
@@ -171,7 +171,7 @@ class ContextualParaformerDecoder(ParaformerSANMDecoder):
 
         self.normalize_before = normalize_before
         if self.normalize_before:
-            self.after_norm = LayerNorm(attention_dim)
+            self.after_norm = LayerNormExport(attention_dim)
         if use_output_layer:
             self.output_layer = torch.nn.Linear(attention_dim, vocab_size)
         else:

@@ -588,14 +588,14 @@ class ParaformerStreaming(Paraformer):
             tensor[i][1][:, :, :, :] = opt[i]["v"][:, :, :, :]
         return tensor
 
-    def init_cache_export(self, feats, cif_hidden, cif_alphas):
+    def init_cache_export(self, feats, cif_hidden, cif_alphas, encoder_opt, decoder_opt, decode_fsmn):
         chunk_size = [0, 10, 5]
         encoder_chunk_look_back = 4
         decoder_chunk_look_back = 1
-        # batch_size = 1
+        batch_size = 1
         cache = {}
-        # enc_output_size = 512
-        # feats_dims = 80 * 7
+        enc_output_size = 512
+        feats_dims = 80 * 7
         cache_encoder = {
             "start_idx": 0,
             "cif_hidden": cif_hidden,  # torch.zeros((batch_size, 1, enc_output_size))
@@ -604,8 +604,8 @@ class ParaformerStreaming(Paraformer):
             "encoder_chunk_look_back": encoder_chunk_look_back,
             "last_chunk": False,  # False
             # "init_opt": bool(flag[1]),
-            # "opt": self.process_opt(encoder_opt),
-            "opt": None,
+            "opt": self.process_opt(encoder_opt),
+            # "opt": None,
             "feats": feats,  # torch.zeros((batch_size, chunk_size[0] + chunk_size[2], feats_dims))
             "tail_chunk": False,  # False
         }
@@ -613,11 +613,11 @@ class ParaformerStreaming(Paraformer):
 
         cache_decoder = {
             # "init_fsmn": bool(flag[3]),
-            "decode_fsmn": None,
+            "decode_fsmn": decode_fsmn,
             "decoder_chunk_look_back": decoder_chunk_look_back,
             # "init_opt": bool(flag[4]),
-            # "opt": self.process_opt(decoder_opt),
-            "opt": None,
+            "opt": self.process_opt(decoder_opt),
+            # "opt": None,
             "chunk_size": chunk_size,
         }
         cache["decoder"] = cache_decoder
@@ -630,10 +630,10 @@ class ParaformerStreaming(Paraformer):
             self,
             speech,
             speech_lengths,
-            feats, cif_hidden, cif_alphas
+            feats, cif_hidden, cif_alphas, is_Final, encoder_opt, decoder_opt, decode_fsmn
     ):
-        cache = self.init_cache_export(feats, cif_hidden, cif_alphas)
-        is_final = False
+        cache = self.init_cache_export(feats, cif_hidden, cif_alphas, encoder_opt, decoder_opt, decode_fsmn)
+        is_final = bool (is_Final)
         speech = speech.to("cpu")
         speech_lengths = speech_lengths.to("cpu")
 
@@ -668,7 +668,8 @@ class ParaformerStreaming(Paraformer):
         # # pad with mask tokens to ensure compatibility with sos/eos tokens
         # yseq = torch.tensor([self.sos] + yseq.tolist() + [self.eos], device=yseq.device)
         return (decoder_out, pre_token_length, cache["encoder"]["feats"], cache["encoder"]["cif_hidden"],
-                cache["encoder"]["cif_alphas"])
+                cache["encoder"]["cif_alphas"], self.opt2Tensor(cache["encoder"]["opt"]),
+                self.opt2Tensor(cache["decoder"]["opt"]), torch.stack(cache["decoder"]["decode_fsmn"], dim=0),)
 
     def inference(
             self,

@@ -218,6 +218,36 @@ def make_pad_mask(lengths, xs=None, length_dim=-1, maxlen=None):
     return mask
 
 
+def make_pad_mask_for_tensor(lengths, xs=None, length_dim: int = -1, maxlen=None):
+    if length_dim == 0:
+        raise ValueError("length_dim cannot be 0: {}".format(length_dim))
+
+    bs = lengths.shape[0]
+    if maxlen is None:
+        if xs is None:
+            maxlen = int(torch.max(lengths))
+        else:
+            maxlen = xs.size(length_dim)
+    else:
+        assert xs is None
+        assert maxlen >= int(torch.max(lengths))
+
+    seq_range = torch.arange(0, maxlen, dtype=torch.int64)
+    seq_range_expand = seq_range.unsqueeze(0).expand(bs, maxlen)
+    seq_length_expand = seq_range_expand.new(lengths).unsqueeze(-1)
+    mask = seq_range_expand >= seq_length_expand
+
+    if xs is not None:
+        assert xs.size(0) == bs, (xs.size(0), bs)
+
+        if length_dim < 0:
+            length_dim = xs.dim() + length_dim
+        # ind = (:, None, ..., None, :, , None, ..., None)
+        ind = tuple(slice(None) if i in (0, length_dim) else None for i in range(xs.dim()))
+        mask = mask[ind].expand_as(xs).to(xs.device)
+    return mask
+
+
 def make_non_pad_mask(lengths, xs=None, length_dim=-1):
     """Make mask tensor containing indices of non-padded part.
 
@@ -428,9 +458,9 @@ def get_subsample(train_args, mode, arch):
         return subsample
 
     elif (
-        (mode == "asr" and arch in ("rnn", "rnn-t"))
-        or (mode == "mt" and arch == "rnn")
-        or (mode == "st" and arch == "rnn")
+            (mode == "asr" and arch in ("rnn", "rnn-t"))
+            or (mode == "mt" and arch == "rnn")
+            or (mode == "st" and arch == "rnn")
     ):
         subsample = np.ones(train_args.elayers + 1, dtype=np.int32)
         if train_args.etype.endswith("p") and not train_args.etype.startswith("vgg"):
@@ -606,10 +636,10 @@ def sub_factor_to_params(sub_factor: int, input_size: int) -> Tuple[int, int, in
 
 
 def make_chunk_mask(
-    size: int,
-    chunk_size: int,
-    left_chunk_size: int = 0,
-    device: torch.device = None,
+        size: int,
+        chunk_size: int,
+        left_chunk_size: int = 0,
+        device: torch.device = None,
 ) -> torch.Tensor:
     """Create chunk mask for the subsequent steps (size, size).
 
@@ -660,10 +690,10 @@ def make_source_mask(lengths: torch.Tensor) -> torch.Tensor:
 
 
 def get_transducer_task_io(
-    labels: torch.Tensor,
-    encoder_out_lens: torch.Tensor,
-    ignore_id: int = -1,
-    blank_id: int = 0,
+        labels: torch.Tensor,
+        encoder_out_lens: torch.Tensor,
+        ignore_id: int = -1,
+        blank_id: int = 0,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Get Transducer loss I/O.
 

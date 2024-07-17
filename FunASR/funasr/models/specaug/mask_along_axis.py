@@ -70,7 +70,7 @@ def mask_along_axis(
 def mask_along_axis_lfr(
     spec: torch.Tensor,
     spec_lengths: torch.Tensor,
-    mask_width_range: Sequence[int] = (0, 30),
+    mask_width_range = (0, 30),
     dim: int = 1,
     num_mask: int = 2,
     replace_with_zero: bool = True,
