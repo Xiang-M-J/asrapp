@@ -28,6 +28,10 @@ typedef FbankFunc = Void Function(Pointer<Float>, Pointer<Pointer<Float>>, Int32
 final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontend = fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontend").asFunction();
 final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontendOnline = fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontendOnline").asFunction();
 
+class WavFrontendWithCache {
+  List<int> cache = List.empty(growable: true);
+  
+}
 
 Pointer<Float> uint8list2FloatPointer(List<int> list){
   int s = list.length * 4;
