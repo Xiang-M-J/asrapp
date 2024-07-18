@@ -28,6 +28,8 @@ void WavFrontend(float* s, float** o, int sampleNum);
 
 void WavFrontendOnline(float* s, float** o, int sampleNum, int is_final);
 
+void WavFrontendOnline2(float* s, float** o, int sampleNum, int is_final);
+
 float random_gaussian();
 
 float cal_mean(Vector data, int wlen);

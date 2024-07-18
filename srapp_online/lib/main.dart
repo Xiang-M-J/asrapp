@@ -16,6 +16,7 @@ import 'package:srapp_online/utils/audio_loader.dart';
 import 'package:srapp_online/utils/ernie_punctuation.dart';
 import 'package:srapp_online/utils/fsmnvad_dector.dart';
 import 'package:srapp_online/utils/ort_env_utils.dart';
+import 'package:srapp_online/utils/paraformer_online.dart';
 import 'package:srapp_online/utils/sound_utils.dart';
 import 'package:srapp_online/utils/speech_recognizer.dart';
 import 'package:srapp_online/utils/type_converter.dart';
@@ -48,8 +49,7 @@ class AsrScreen extends StatefulWidget {
   AsrScreenState createState() => AsrScreenState();
 }
 
-class AsrScreenState extends State<AsrScreen>
-    with SingleTickerProviderStateMixin {
+class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixin {
   // String _recordFilePath;
   final TextEditingController resultController = TextEditingController();
   final TextEditingController statusController = TextEditingController();
@@ -69,8 +69,7 @@ class AsrScreenState extends State<AsrScreen>
   int startIdx = 0;
   int step = 9600;
   int lastWaveformLength = 0;
-  List<Map<int, List<int>>> voice =
-      List<Map<int, List<int>>>.empty(growable: true);
+  List<Map<int, List<int>>> voice = List<Map<int, List<int>>>.empty(growable: true);
 
   FlutterSoundRecorder? mRecorder = FlutterSoundRecorder();
   FlutterSoundPlayer? mPlayer = FlutterSoundPlayer();
@@ -106,7 +105,11 @@ class AsrScreenState extends State<AsrScreen>
   Timer? vadTimer;
   Timer? srTimer;
 
+  String keyword = "开始识别";
+
   List<int> cacheWave = List<int>.empty(growable: true);
+
+  ParaformerOnline paraformerOnline = ParaformerOnline();
 
   var logger = Logger(
     filter: null, // Use the default LogFilter (-> only log in debug mode)
@@ -129,9 +132,12 @@ class AsrScreenState extends State<AsrScreen>
     initModel();
   }
 
+
+
   void initModel() async {
     await speechRecognizer?.initModel();
     await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
+    await paraformerOnline.initModel();
     setState(() {
       statusController.text = "语音识别模型已加载";
       isSRModelInitialed = true;
@@ -148,11 +154,9 @@ class AsrScreenState extends State<AsrScreen>
     await session.configure(AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
       avAudioSessionCategoryOptions:
-          AVAudioSessionCategoryOptions.allowBluetooth |
-              AVAudioSessionCategoryOptions.defaultToSpeaker,
+          AVAudioSessionCategoryOptions.allowBluetooth | AVAudioSessionCategoryOptions.defaultToSpeaker,
       avAudioSessionMode: AVAudioSessionMode.spokenAudio,
-      avAudioSessionRouteSharingPolicy:
-          AVAudioSessionRouteSharingPolicy.defaultPolicy,
+      avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
       avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
       androidAudioAttributes: const AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
@@ -182,13 +186,13 @@ class AsrScreenState extends State<AsrScreen>
     vaDetector?.release();
     erniePunctuation?.release();
     speechRecognizer?.release();
+    paraformerOnline?.release();
     releaseOrtEnv();
     super.dispose();
   }
 
   void playRemindSound() async {
-    await mPlayer!
-        .startPlayer(fromDataBuffer: remindSound, codec: Codec.pcm16WAV);
+    await mPlayer!.startPlayer(fromDataBuffer: remindSound, codec: Codec.pcm16WAV);
   }
 
   ///开始语音录制的方法
@@ -268,16 +272,14 @@ class AsrScreenState extends State<AsrScreen>
         });
         Map<String, List<dynamic>>? result;
         if (useVAD && segments!.isNotEmpty) {
-          result =
-              await speechRecognizer?.predictWithVADAsync(intData, segments);
+          result = await speechRecognizer?.predictWithVADAsync(intData, segments);
         } else {
           result = await speechRecognizer?.predictAsync(intData);
         }
 
         if (result != null) {
           if (usePunc && erniePunctuation!.isInitialed) {
-            recognizeResult = await erniePunctuation
-                ?.predictAsync(result["char"] as List<String>);
+            recognizeResult = await erniePunctuation?.predictAsync(result["char"] as List<String>);
           } else if (useVAD && !usePunc) {
             recognizeResult = speechRecognizer?.puncByVAD(segments!, result);
           } else {
@@ -319,8 +321,7 @@ class AsrScreenState extends State<AsrScreen>
     int hours = (count ~/ 60);
     int minutes = count % 60;
 
-    time =
-        "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
+    time = "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
     return time;
   }
 
@@ -376,16 +377,15 @@ class AsrScreenState extends State<AsrScreen>
           for (var segment in segments) {
             int segb = segment[0] * 16;
             int sege = segment[1] * 16;
-            print("分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segb, $sege]");
+            print(
+                "分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segb, $sege]");
             if (segb > startIdx + offset && sege < startIdx + step - offset) {
               voice.add({0: seg.sublist(segb, sege)});
               print(0);
-            } else if (segb > startIdx + offset &&
-                sege >= startIdx + step - offset) {
+            } else if (segb > startIdx + offset && sege >= startIdx + step - offset) {
               voice.add({1: seg.sublist(segb)});
               print(1);
-            } else if (segb <= startIdx + offset &&
-                sege < startIdx + step - offset) {
+            } else if (segb <= startIdx + offset && sege < startIdx + step - offset) {
               voice.add({2: seg.sublist(0, sege)});
               print(2);
             } else {
@@ -413,23 +413,24 @@ class AsrScreenState extends State<AsrScreen>
       if (voice.isEmpty) {
         return;
       }
-      if(lastVoiceLength == voice.length){
-        counter ++;
+      if (lastVoiceLength == voice.length) {
+        counter++;
       }
       List<int>? cacheVoice;
-      if(counter >= 3){
+      if (counter >= 3) {
         counter = 0;
         cacheVoice = concatVoice(voice);
         voice.clear();
-        if(cacheVoice == null) {
+        if (cacheVoice == null) {
           lastVoiceLength = 0;
-          return;}
+          return;
+        }
         Map? result = await speechRecognize(cacheVoice);
         lastStepResult += result?["char"].join(" ") + "，";
         resultController.text = lastStepResult;
-      }else{
+      } else {
         cacheVoice = concatVoice(voice);
-        if(cacheVoice == null) {
+        if (cacheVoice == null) {
           voice.clear();
           lastVoiceLength = 0;
           return;
@@ -448,7 +449,7 @@ class AsrScreenState extends State<AsrScreen>
       // if (cacheVoice == null) return;
       // Map? result = await speechRecognize(cacheVoice);
       // resultController.text += result?["char"].join(" ") + "，";
-      
+
       // for(var v in voice){
       //   if (v.keys.first == 0){
       //     Map? result = await speechRecognize();
@@ -534,8 +535,7 @@ class AsrScreenState extends State<AsrScreen>
           // mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Padding(
-              padding:
-                  const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
+              padding: const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
               child: TextField(
                 controller: statusController,
                 style: const TextStyle(color: Colors.grey),
@@ -561,9 +561,7 @@ class AsrScreenState extends State<AsrScreen>
                     color: isRecording ? Colors.green : Colors.grey,
                     size: 24,
                   )),
-                  TextSpan(
-                      text: " 录音时间：${int2time(_count)}",
-                      style: const TextStyle(fontSize: 18)),
+                  TextSpan(text: " 录音时间：${int2time(_count)}", style: const TextStyle(fontSize: 18)),
                 ],
               ),
             ),
@@ -627,21 +625,39 @@ class AsrScreenState extends State<AsrScreen>
                           statusController.text = "正在识别...";
                         });
                         // File newFile = File(newPath!);
+                        paraformerOnline.extractor.reset();
+                        paraformerOnline.reset();
+                        Map cache = {};
+                        List<int>? fCache;
                         try {
                           WavLoader wavLoader = WavLoader();
-                          final rawData = await rootBundle
-                              .load("assets/audio/asr_example.wav");
+                          final rawData = await rootBundle.load("assets/audio/asr_example.wav");
                           List<int> intData = List.empty(growable: true);
-                          List<int> wavInfo =
-                              await wavLoader.loadByteData(rawData);
-                          for (var i = wavInfo[0];
-                              i < wavInfo[0] + wavInfo[1];
-                              i += 2) {
-                            intData.add(
-                                rawData.getInt16(i, Endian.little).toInt());
+                          List<int> wavInfo = await wavLoader.loadByteData(rawData);
+                          for (var i = wavInfo[0]; i < wavInfo[0] + wavInfo[1]; i += 2) {
+                            intData.add(rawData.getInt16(i, Endian.little).toInt());
                           }
-
-                          await inference(intData);
+                          int chunkStep = paraformerOnline.step;
+                          int spLen = intData.length;
+                          int spOff = 0;
+                          List<int> flags;
+                          String finalResult = "";
+                          for (spOff = 0; spOff < intData.length; spOff += chunkStep) {
+                            if (spOff + chunkStep >= intData.length - 1) {
+                              chunkStep = spLen - spOff;
+                              flags = [1];
+                            } else {
+                              flags = [0];
+                            }
+                            Set result = await paraformerOnline
+                                .predictAsync({"waveform": intData.sublist(spOff, spOff + chunkStep), "flags": flags, "cache": {}, "f_cache":fCache});
+                            finalResult += result.first;
+                            cache = result.elementAt(1);
+                            fCache = result.last;
+                            print(result.first);
+                          }
+                          // print(finalResult);
+                          // await inference(intData);
                         } catch (e) {
                           print(e.toString());
                           speechRecognizer?.reset();
@@ -657,8 +673,7 @@ class AsrScreenState extends State<AsrScreen>
               height: 20,
             ),
             Padding(
-                padding: const EdgeInsets.only(
-                    left: 10, top: 0, right: 10, bottom: 0),
+                padding: const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
                 child: ScrollableTextField(
                   controller: resultController,
                   hintText: '识别结果',
@@ -684,16 +699,14 @@ class AsrScreenState extends State<AsrScreen>
                 Row(
                   children: [
                     const Padding(
-                      padding: EdgeInsets.only(
-                          left: 10, top: 10, right: 10, bottom: 0),
+                      padding: EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 0),
                       child: Text(
                         "是否使用VAD",
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
                     Padding(
-                        padding: const EdgeInsets.only(
-                            left: 0, top: 10, right: 0, bottom: 0),
+                        padding: const EdgeInsets.only(left: 0, top: 10, right: 0, bottom: 0),
                         child: Switch(
                             value: useVAD,
                             activeColor: Colors.blue,
@@ -710,8 +723,7 @@ class AsrScreenState extends State<AsrScreen>
                                 setState(() {
                                   statusController.text = "正在加载VAD模型";
                                 });
-                                vaDetector
-                                    ?.initModel("assets/models/fsmn_vad.onnx");
+                                vaDetector?.initModel("assets/models/fsmn_vad.onnx");
                                 setState(() {
                                   statusController.text = "已加载VAD模型";
                                 });
@@ -722,16 +734,14 @@ class AsrScreenState extends State<AsrScreen>
                 Row(
                   children: [
                     const Padding(
-                      padding: EdgeInsets.only(
-                          left: 10, top: 10, right: 10, bottom: 0),
+                      padding: EdgeInsets.only(left: 10, top: 10, right: 10, bottom: 0),
                       child: Text(
                         "使用标点模型",
                         style: TextStyle(fontSize: 16),
                       ),
                     ),
                     Padding(
-                        padding: const EdgeInsets.only(
-                            left: 0, top: 10, right: 0, bottom: 0),
+                        padding: const EdgeInsets.only(left: 0, top: 10, right: 0, bottom: 0),
                         child: Switch(
                             value: usePunc,
                             activeColor: Colors.blue,

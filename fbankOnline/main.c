@@ -146,8 +146,8 @@ void test_gassuian() {
 void test_wave2fbank() {
 	float* waveform;
 	float** output = NULL;
-	int bankNum = 8;
-	int sampleNum = 1600;
+	int bankNum = 80;
+	int sampleNum = 3200;
 	int lfr_m = 7, lfr_n = 6;
 	int m = 1 + (sampleNum - 400) / 160;
 	int m_lfm = (int)((lfr_m - 1) / 2);
@@ -156,7 +156,7 @@ void test_wave2fbank() {
 	output = create2dVector(axis1, bankNum * lfr_m);
 	for (int i = 0; i < sampleNum; i++)
 	{
-		waveform[i] = 100 * (sin(0.01 * i));
+		waveform[i] = (sin(0.01 * i));
 	}
 	// 最小为 800 点，即 20 ms
 	WavFrontend(waveform, output, sampleNum);

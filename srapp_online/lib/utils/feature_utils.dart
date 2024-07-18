@@ -35,8 +35,13 @@ final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int)
 
 class WavFrontendWithCache {
   List<int>? cache;
+  int encoderOutputSize = 512;
 
   WavFrontendWithCache();
+
+  reset(){
+    cache = null;
+  }
 
   extractOnlineFeature(List<int> inputs) {
     if (cache != null) {
@@ -59,7 +64,7 @@ class WavFrontendWithCache {
       }
     }
     wavFrontend(waveformPointer, output, sampleNum);
-    List<List<double>> fbank = floatMat2FloatList(output, axis1, axis2);
+    List<List<double>> fbank = floatMat2FloatListWithRescale(output, axis1, axis2, sqrt(encoderOutputSize));
     calloc.free(waveformPointer);
     for (var i = 0; i < axis1; i++) {
       calloc.free(output[i]);
@@ -122,12 +127,12 @@ List<List<double>> extractFbank(List<int> waveform,
   }
   wavFrontend(waveformPointer, output, sampleNum);
   List<List<double>> fbank;
-  if (rescale) {
-    fbank = floatMat2FloatListWithRescale(
-        output, axis1, axis2, sqrt(encoderOutputSize));
-  } else {
+  // if (rescale) {
+  //   fbank = floatMat2FloatListWithRescale(
+  //       output, axis1, axis2, sqrt(encoderOutputSize));
+  // } else {
     fbank = floatMat2FloatList(output, axis1, axis2);
-  }
+  // }
   calloc.free(waveformPointer);
   for (var i = 0; i < axis1; i++) {
     calloc.free(output[i]);

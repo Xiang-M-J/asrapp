@@ -100,6 +100,7 @@ void WavFrontend(float * s, float ** o, int sampleNum) {
 	return;
 }
 
+
 void WavFrontendOnline(float * s, float ** o, int sampleNum, int is_final) {
 	srand((unsigned)time(NULL));
 	float sampleFrequency = 16000;
@@ -144,7 +145,7 @@ void WavFrontendOnline(float * s, float ** o, int sampleNum, int is_final) {
 		
 		// 加上扰动
 		for (size_t i = 0; i < wlen; i++) {
-			d2[i + 1] = s[i + j] * (1 << 15);
+			d2[i + 1] = s[i + j];
 		}
 
 		// 去除直流分量
@@ -190,6 +191,103 @@ void WavFrontendOnline(float * s, float ** o, int sampleNum, int is_final) {
 	FreeVector(fbank);
 	FreeVector(hamWin);
 	
+	//system("pause");
+	return;
+}
+
+void WavFrontendOnline2(float* s, float** o, int sampleNum, int is_final)
+{
+	srand((unsigned)time(NULL));
+	float sampleFrequency = 16000;
+	float samplePeriod = (float)1e7 / sampleFrequency;
+	float hipassfre = sampleFrequency / 2.0;
+	float lowpassfre = 20.0;
+	int wlen = 25 * 16;
+	int inc = 10 * 16;
+	int bankNum = 80;
+	int fftLength = 512;
+	float dither = 0.0;
+	float preemphasise = 0.97;
+	int m = 1 + (sampleNum - wlen) / inc;    // fbank ʱ��ά�ȵĳ���
+	int lfr_m = 7, lfr_n = 6;
+	int axis1 = (int)ceil(m / (lfr_n * 1.0));
+	int axis2 = lfr_m * bankNum;
+
+	Vector d2 = NULL, fbank = NULL, hamWin = NULL;
+	FBankInfo info;
+	int i, j;
+
+	d2 = CreateVector(wlen);
+
+	info = InitFBank(wlen, samplePeriod, bankNum, lowpassfre, hipassfre, 1, 1, 0, 1.0, 0, 0);
+
+	hamWin = GenHamWindow(wlen);
+	fbank = CreateVector(bankNum);
+
+	float** fbank_data = NULL;
+	fbank_data = (float**)malloc(sizeof(float*) * m);
+
+	for (size_t i = 0; i < m; i++)
+	{
+		fbank_data[i] = (float*)malloc(sizeof(float) * bankNum);
+		for (size_t j = 0; j < bankNum; j++)
+		{
+			fbank_data[i][j] = 0.0;
+		}
+	}
+
+	int i_ = 0;
+
+	for (j = 0; j <= (sampleNum - wlen); j += inc) {
+
+		// �����Ŷ�
+		for (size_t i = 0; i < wlen; i++) {
+			// d2[i + 1] = s[i + j] + dither * random_gaussian();
+			d2[i + 1] = s[i + j];
+		}
+
+		// ȥ��ֱ������
+		float d2_mean = cal_mean(d2, wlen);
+		for (size_t i = 1; i <= wlen; i++)
+		{
+			d2[i] -= d2_mean;
+		}
+
+		// ��ȡ��������
+		float signal_log_energy = cal_energy(d2, wlen);
+
+		// Ԥ��ǿ
+		PreEmphasise(d2, preemphasise);
+
+		//�Ӵ�
+		Ham(d2, hamWin, wlen);
+
+		//te��te2�ֱ��Ǹ����źź�fft����źż��������
+		//����mel�˲�����
+		Wave2FBank2(d2, fbank, info);
+		for (size_t k = 0; k < bankNum; k++)
+		{
+			fbank_data[i_][k] = fbank[k + 1];
+		}
+		//printf("\n");
+		i_++;
+	}
+	//SubtractColumnMean(o, bankNum, m);
+
+	apply_lfr(fbank_data, o, lfr_m, lfr_n, m, bankNum);
+
+	for (size_t i = 0; i < m; i++)
+	{
+		free(fbank_data[i]);
+	}
+	free(fbank_data);
+
+	apply_cmvn(o, axis1, axis2);
+
+	FreeVector(d2);
+	FreeVector(fbank);
+	FreeVector(hamWin);
+
 	//system("pause");
 	return;
 }
