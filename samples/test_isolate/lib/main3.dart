@@ -16,7 +16,7 @@ enum RecorderMessage {
 
 // 录音函数
 void recorderManager(SendPort sendPort) async {
-  BackgroundIsolateBinaryMessenger.ensureInitialized();
+  // BackgroundIsolateBinaryMessenger.ensureInitialized();
   FlutterSoundRecorder recorder = FlutterSoundRecorder();
   Directory tempDir = await getTemporaryDirectory();
   String filePath = '${tempDir.path}/recording.aac';

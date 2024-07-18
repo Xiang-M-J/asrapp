@@ -3,24 +3,28 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: IsolateExample(),
     );
   }
 }
 
 class IsolateExample extends StatefulWidget {
+  const IsolateExample({super.key});
+
   @override
-  _IsolateExampleState createState() => _IsolateExampleState();
+  IsolateExampleState createState() => IsolateExampleState();
 }
 
-class _IsolateExampleState extends State<IsolateExample> {
+class IsolateExampleState extends State<IsolateExample> {
   Isolate? _isolate;
   ReceivePort? _receivePort;
   SendPort? _sendPort;
@@ -95,7 +99,7 @@ class _IsolateExampleState extends State<IsolateExample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Isolate Example'),
+        title: const Text('Isolate Example'),
       ),
       body: Center(
         child: Column(
@@ -104,18 +108,18 @@ class _IsolateExampleState extends State<IsolateExample> {
             _isRunning
                 ? ElevatedButton(
               onPressed: _stopIsolate,
-              child: Text('Stop Isolate'),
+              child: const Text('Stop Isolate'),
             )
                 : ElevatedButton(
               onPressed: _startIsolate,
-              child: Text('Start Isolate'),
+              child: const Text('Start Isolate'),
             ),
             ElevatedButton(
               onPressed: () {
                 _parameter += 1000000;
                 // _sendParameterToIsolate(_parameter);
               },
-              child: Text('Send Parameter to Isolate'),
+              child: const Text('Send Parameter to Isolate'),
             ),
           ],
         ),

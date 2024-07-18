@@ -22,8 +22,10 @@ class IsolateExample extends StatefulWidget {
 
 class _IsolateExampleState extends State<IsolateExample> {
   Isolate? _isolate;
-  ReceivePort? _receivePort;
-  SendPort? _sendPort;
+  ReceivePort? _receive1Port;
+  ReceivePort? _receive2Port;
+  SendPort? _send1Port;
+  SendPort? _send2Port;
   bool _isRunning = false;
   int _parameter = 0;
   List<int> _tasks = [];
@@ -41,11 +43,12 @@ class _IsolateExampleState extends State<IsolateExample> {
   }
 
   void _startIsolate() async {
-    _receivePort = ReceivePort();
-    _isolate = await Isolate.spawn(_isolateEntry, _receivePort!.sendPort);
-    _receivePort!.listen((message) {
+    _receive1Port = ReceivePort();
+    _receive2Port = ReceivePort();
+    _isolate = await Isolate.spawn(_isolateEntry, {"a": _receive1Port!.sendPort, "b": _receive2Port!.sendPort});
+    _receive1Port!.listen((message) {
       if (message is SendPort) {
-        _sendPort = message;
+        _send1Port = message;
       } else {
         setState(() {
           print("Received from isolate: $message");
@@ -53,9 +56,19 @@ class _IsolateExampleState extends State<IsolateExample> {
       }
     });
 
-    _timer = Timer.periodic(Duration(seconds: 5), (timer) {
+    _receive2Port!.listen((message){
+      if (message is SendPort) {
+        _send2Port = message;
+      }else{
+        setState(() {
+          print("Received from isolate: $message");
+        });
+      }
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_tasks.isNotEmpty) {
-        _sendPort?.send(_tasks.removeAt(0));
+        _send1Port?.send(_tasks.removeAt(0));
       }
     });
 
@@ -68,7 +81,7 @@ class _IsolateExampleState extends State<IsolateExample> {
     if (_isolate != null) {
       _isolate!.kill(priority: Isolate.immediate);
       _isolate = null;
-      _receivePort!.close();
+      _receive1Port!.close();
     }
     _timer?.cancel();
     setState(() {
@@ -80,14 +93,22 @@ class _IsolateExampleState extends State<IsolateExample> {
     _tasks.add(param); // 将任务添加到队列
   }
 
-  static void _isolateEntry(SendPort mainSendPort) {
-    ReceivePort isolateReceivePort = ReceivePort();
-    mainSendPort.send(isolateReceivePort.sendPort);
+  static void _isolateEntry( Map sendPorts) {
+    SendPort mainSendPort = sendPorts["a"];
+    SendPort anotherPort = sendPorts["b"];
+    ReceivePort isolateReceivePort1 = ReceivePort();
+    ReceivePort isolateReceivePort2 = ReceivePort();
+    mainSendPort.send(isolateReceivePort1.sendPort);
+    anotherPort.send(isolateReceivePort2.sendPort);
 
-    isolateReceivePort.listen((param) async {
+    isolateReceivePort1.listen((param) async {
       if (param is int) {
         await _executeTasksSequentially(param, mainSendPort);
       }
+    });
+
+    isolateReceivePort2.listen((param) async{
+      print("from port2: $param");
     });
   }
 
@@ -103,7 +124,7 @@ class _IsolateExampleState extends State<IsolateExample> {
 
   static Future<int> _heavyComputation(int param) async {
     // 模拟耗时工作
-    await Future.delayed(Duration(seconds: 3)); // 假设计算需要 3 秒
+    await Future.delayed(const Duration(seconds: 3)); // 假设计算需要 3 秒
     return param * DateTime.now().millisecondsSinceEpoch;
   }
 
@@ -111,7 +132,7 @@ class _IsolateExampleState extends State<IsolateExample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Isolate Example'),
+        title: const Text('Isolate Example'),
       ),
       body: Center(
         child: Column(
@@ -120,18 +141,18 @@ class _IsolateExampleState extends State<IsolateExample> {
             _isRunning
                 ? ElevatedButton(
               onPressed: _stopIsolate,
-              child: Text('Stop Isolate'),
+              child: const Text('Stop Isolate'),
             )
                 : ElevatedButton(
               onPressed: _startIsolate,
-              child: Text('Start Isolate'),
+              child: const Text('Start Isolate'),
             ),
             ElevatedButton(
               onPressed: () {
                 _parameter += 1;
                 _sendParameterToIsolate(_parameter);
               },
-              child: Text('Send Parameter to Isolate'),
+              child: const Text('Send Parameter to Isolate'),
             ),
           ],
         ),
