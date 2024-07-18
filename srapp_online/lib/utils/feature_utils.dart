@@ -45,7 +45,7 @@ class WavFrontendWithCache {
 
   extractOnlineFeature(List<int> inputs) {
     if (cache != null) {
-      inputs.addAll(cache!);
+      inputs.insertAll(0, cache!);
     }
     Pointer<Float> waveformPointer = uint8list2FloatPointer(inputs);
     int sampleNum = inputs.length;

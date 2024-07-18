@@ -650,13 +650,17 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
                               flags = [0];
                             }
                             Set result = await paraformerOnline
-                                .predictAsync({"waveform": intData.sublist(spOff, spOff + chunkStep), "flags": flags, "cache": {}, "f_cache":fCache});
-                            finalResult += result.first;
+                                .predictAsync({"waveform": intData.sublist(spOff, spOff + chunkStep), "flags": flags, "cache": cache, "f_cache":fCache});
+                            if(result.first == ""){
+                              finalResult += "，";
+                            }else{
+                              finalResult += result.first;
+                            }
                             cache = result.elementAt(1);
                             fCache = result.last;
                             print(result.first);
                           }
-                          // print(finalResult);
+                          print(finalResult);
                           // await inference(intData);
                         } catch (e) {
                           print(e.toString());

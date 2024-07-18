@@ -29,7 +29,7 @@ sinusoidalPositionEncoderOnline(List<List<double>> x, {int startIdx = 0}) {
 
 class ParaformerOnline {
   List<int> chunkSize = [5, 10, 5];
-  int intraOpNumThreads = 4;
+  int intraOpNumThreads = 1;
   int encoderOutputSize = 512;
   int fsmnLayer = 16;
   int fsmnLorder = 10;
@@ -155,9 +155,7 @@ class ParaformerOnline {
         } else {
           featsChunk1 = addOverlapChunk(feats.sublist(0, (chunkSize[1])), cache);
         }
-
         String asrResChunk1 = infer(featsChunk1, cache);
-
         cache["last_chunk"] = true;
         List<List<double>> featsChunk2 = addOverlapChunk(feats.sublist(chunkSize[1] - chunkSize[2]), cache);
         String asrResChunk2 = infer(featsChunk2, cache);
@@ -187,6 +185,12 @@ class ParaformerOnline {
     List<double> listFire = List.empty(growable: true);
     List<double> cacheAlphas = [];
     List<double> cacheHiddens = [];
+    for (var i = 0; i<chunkSize[0]; i++) {
+      alphas[i] = 0.0;
+    }
+    for (var i = chunkSize[0]+chunkSize[1]; i < alphas.length; i++) {
+      alphas[i] = 0.0;
+    }
 
     if (cache.isNotEmpty && cache.containsKey("cif_alphas") && cache.containsKey("cif_hidden")) {
       hidden.insert(0, cache["cif_hidden"]);
@@ -307,9 +311,9 @@ class ParaformerOnline {
 
       for (var i = 2; i < decoderOutput.length; i++) {
         cache["decoder_fsmn"][i - 2] = (decoderOutput[i]?.value as List<List<List<double>>>)[0];
-        int l1 = cache["decoder_fsmn"][i - 2].length;
+        // int l1 = cache["decoder_fsmn"][i - 2].length;
         int l2 = cache["decoder_fsmn"][i - 2][0].length;
-        for (var j = 0; j < l1; j++) {
+        for (var j = 0; j < encoderOutputSize; j++) {
           cache["decoder_fsmn"][i - 2][j].removeRange(0, l2 - fsmnLorder);
         }
       }
