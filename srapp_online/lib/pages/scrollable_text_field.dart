@@ -36,6 +36,9 @@ class ScrollableTextFieldState extends State<ScrollableTextField> {
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: widget.hintText,
+              hintStyle: const TextStyle(
+                color: Colors.grey
+              )
             ),
             readOnly: true,
           ),

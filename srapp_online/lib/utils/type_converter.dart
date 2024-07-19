@@ -35,3 +35,9 @@ List<double> intList2doubleList(List<int> intData){
   return doubleData;
 }
 
+List<String> string2List(String result, int startIdx){
+  List<String> stringList = result.substring(startIdx).split("");
+  stringList.remove("，");
+  stringList.remove("。");
+  return stringList;
+}

@@ -186,7 +186,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     vaDetector?.release();
     erniePunctuation?.release();
     speechRecognizer?.release();
-    paraformerOnline?.release();
+    paraformerOnline.release();
     releaseOrtEnv();
     super.dispose();
   }

@@ -295,6 +295,76 @@ String sentencePostprocess(List<String> words, [List<List<int>>? timeStamp]) {
 }
 
 
-// void main(){
-//   print(sentencePostprocess(["你", "好", "hello", "world"]));
-// }
+String simpleSentenceProcess(List<String> words){
+  List<String> middleLists = [];
+  List<String> wordLists = [];
+  String wordItem = "";
+
+  // wash words lists
+  for (var i in words) {
+    String word = "";
+    word = i;
+
+    if (["<s>", "</s>", "<unk>"].contains(word)) {
+      continue;
+    } else {
+      middleLists.add(word);
+    }
+  }
+
+  // all chinese characters
+  if (isAllChinese(middleLists)) {
+    for (var i = 0; i < middleLists.length; i++) {
+      wordLists.add(middleLists[i].replaceAll(" ", ""));
+    }
+  }
+  // all alpha characters
+  else if (isAllAlpha(middleLists)) {
+    bool tsFlag = true;
+    for (var i = 0; i < middleLists.length; i++) {
+
+      String word = "";
+      if (middleLists[i].contains("@@")) {
+        word = middleLists[i].replaceAll("@@", "");
+        wordItem += word;
+
+      } else {
+        wordItem += middleLists[i];
+        wordLists.add(wordItem);
+        wordLists.add(" ");
+        wordItem = "";
+      }
+    }
+  }
+  // mix characters
+  else {
+    bool alphaBlank = false;
+    for (var i = 0; i < middleLists.length; i++) {
+      String word = "";
+      if (isStringAllChinese(middleLists[i])) {
+        if (alphaBlank) {
+          wordLists.removeLast();
+        }
+        wordLists.add(middleLists[i]);
+        alphaBlank = false;
+      } else if (middleLists[i].contains("@@")) {
+        word = middleLists[i].replaceAll("@@", "");
+        wordItem += word;
+        alphaBlank = false;
+      } else if (isStringAllAlpha(middleLists[i])) {
+        wordItem += middleLists[i];
+        wordLists.add(wordItem);
+        wordLists.add(" ");
+        wordItem = "";
+        alphaBlank = true;
+      } else {
+        throw Exception("invalid character: ${middleLists[i]}");
+      }
+    }
+  }
+  return wordLists.join();
+}
+
+void main(){
+  print(simpleSentenceProcess([ "ye@@ah", "你", "好", "hello", "world"]));
+}

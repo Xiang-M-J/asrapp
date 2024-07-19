@@ -434,7 +434,6 @@ class AsrScreenState extends State<AsrScreen>
           logger.i("final: $lastStepResult");
           resultController.text = lastStepResult;
         });
-        
       }else{
         cacheVoice = concatVoice(voice);
         if(cacheVoice == null) {
