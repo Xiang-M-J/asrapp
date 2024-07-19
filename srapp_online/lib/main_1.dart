@@ -359,7 +359,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('语音识别'),
+        title: const Text('语音识别', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),),
         backgroundColor: Colors.blueAccent,
       ),
       body: Center(
