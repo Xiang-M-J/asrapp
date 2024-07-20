@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
@@ -9,7 +8,6 @@ import 'package:srapp_online/pages/show_toasts.dart';
 import 'package:srapp_online/utils/ernie_punctuation.dart';
 import 'package:srapp_online/utils/fsmnvad_dector.dart';
 import 'package:srapp_online/utils/ort_env_utils.dart';
-import 'package:srapp_online/utils/paraformer_online.dart';
 import 'package:srapp_online/utils/sentence_analysis.dart';
 import 'package:srapp_online/utils/similarity_text_index.dart';
 import 'package:srapp_online/utils/sound_utils.dart';
@@ -76,7 +74,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   SpeechRecognizer? speechRecognizer;
   FsmnVaDetector? vaDetector;
-  ErniePunctuation? erniePunctuation;
+  // ErniePunctuation? erniePunctuation;
 
   static const sampleRate = 16000;
 
@@ -98,7 +96,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   bool thisStepIsWord = false; // 当前步识别的结果是否为文字，是为 ture，如果不是为空，则为false
   String thisStepResult = "";   // 当前步已经识别得到的结果，resultController.text = thisStepResult
 
-  ParaformerOnline paraformerOnline = ParaformerOnline();
+  // ParaformerOnline paraformerOnline = ParaformerOnline();
 
   var logger = Logger(
     filter: null, // Use the default LogFilter (-> only log in debug mode)
@@ -117,14 +115,14 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     initOrtEnv();
     speechRecognizer = SpeechRecognizer();
     vaDetector = FsmnVaDetector();
-    erniePunctuation = ErniePunctuation();
+    // erniePunctuation = ErniePunctuation();
     initModel();
   }
 
   void initModel() async {
     await speechRecognizer?.initModel();
     await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
-    await paraformerOnline.initModel();
+    // await paraformerOnline.initModel();
     setState(() {
       statusController.text = "语音识别模型已加载";
       isSRModelInitialed = true;
@@ -171,9 +169,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     mPlayer!.closePlayer();
     mPlayer = null;
     vaDetector?.release();
-    erniePunctuation?.release();
+    // erniePunctuation?.release();
     speechRecognizer?.release();
-    paraformerOnline.release();
+    // paraformerOnline.release();
     releaseOrtEnv();
     super.dispose();
   }

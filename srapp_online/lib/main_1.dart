@@ -83,9 +83,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   List<String> tempAudioPaths = List.empty(growable: true);
 
-  SpeechRecognizer? speechRecognizer;
-  FsmnVaDetector? vaDetector;
-  ErniePunctuation? erniePunctuation;
+  // SpeechRecognizer? speechRecognizer;
+  // FsmnVaDetector? vaDetector;
+  // ErniePunctuation? erniePunctuation;
 
   Map cache = {};
   List<int>? fCache;
@@ -137,15 +137,15 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       statusController.text = "语音识别模型正在加载";
     }
     initOrtEnv();
-    speechRecognizer = SpeechRecognizer();
-    vaDetector = FsmnVaDetector();
-    erniePunctuation = ErniePunctuation();
+    // speechRecognizer = SpeechRecognizer();
+    // vaDetector = FsmnVaDetector();
+    // erniePunctuation = ErniePunctuation();
     initModel();
   }
 
   void initModel() async {
-    await speechRecognizer?.initModel();
-    await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
+    // await speechRecognizer?.initModel();
+    // await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
     await paraformerOnline.initModel();
     setState(() {
       statusController.text = "语音识别模型已加载";
@@ -192,9 +192,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     mRecorder = null;
     mPlayer!.closePlayer();
     mPlayer = null;
-    vaDetector?.release();
-    erniePunctuation?.release();
-    speechRecognizer?.release();
+    // vaDetector?.release();
+    // erniePunctuation?.release();
+    // speechRecognizer?.release();
     paraformerOnline.release();
     releaseOrtEnv();
     super.dispose();
@@ -286,9 +286,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       if (result.first == "") {
         if (lastStepIsWord) {
           resultController.text += "，";
-          // 需要注意此处需要清空 cache 和 fCache，否则可能会出现
-          cache = {};
-          fCache = null;
         }
         lastStepIsWord = false;
         // if(usePunc && resultController.text.length - puncIdx > 10){
@@ -299,6 +296,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
         //     resultController.text = puncedResult;
         //   }
         // }
+        // 需要注意此处需要清空 cache 和 fCache，否则可能会出现
+        cache = {};
+        fCache = null;
       } else {
         lastStepIsWord = true;
         resultController.text += result.first;
@@ -448,74 +448,74 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
             const SizedBox(
               height: 20,
             ),
-            ElevatedButton(
-                onPressed: isSRModelInitialed
-                    ? () async {
-                        if (isRecognizing) {
-                          showToastWrapper("正在识别,请稍等");
-                          return;
-                        }
-
-                        setState(() {
-                          isRecognizing = true;
-                          statusController.text = "正在识别...";
-                        });
-                        // File newFile = File(newPath!);
-                        paraformerOnline.extractor.reset();
-                        paraformerOnline.reset();
-                        Map cache = {};
-                        List<int>? fCache;
-                        try {
-                          WavLoader wavLoader = WavLoader();
-                          final rawData = await rootBundle.load("assets/audio/asr_example.wav");
-                          List<int> intData = List.empty(growable: true);
-                          List<int> wavInfo = await wavLoader.loadByteData(rawData);
-                          for (var i = wavInfo[0]; i < wavInfo[0] + wavInfo[1]; i += 2) {
-                            intData.add(rawData.getInt16(i, Endian.little).toInt());
-                          }
-                          int chunkStep = paraformerOnline.step;
-                          int spLen = intData.length;
-                          int spOff = 0;
-                          List<int> flags;
-                          String finalResult = "";
-                          for (spOff = 0; spOff < intData.length; spOff += chunkStep) {
-                            if (spOff + chunkStep >= intData.length - 1) {
-                              chunkStep = spLen - spOff;
-                              flags = [1];
-                            } else {
-                              flags = [0];
-                            }
-                            Set result = await paraformerOnline.predictAsync({
-                              "waveform": intData.sublist(spOff, spOff + chunkStep),
-                              "flags": flags,
-                              "cache": cache,
-                              "f_cache": fCache
-                            });
-                            if (result.first == "") {
-                              finalResult += "，";
-                            } else {
-                              finalResult += result.first;
-                            }
-                            cache = result.elementAt(1);
-                            fCache = result.last;
-                            print(result.first);
-                          }
-                          print(finalResult);
-                          // await inference(intData);
-                        } catch (e) {
-                          print(e.toString());
-                          speechRecognizer?.reset();
-                        }
-                        setState(() {
-                          isRecognizing = false;
-                          statusController.text = "识别完成";
-                        });
-                      }
-                    : () {
-                        showToastWrapper("正在初始化模型，请稍等");
-                        return;
-                      },
-                child: const Text("打开文件")),
+            // ElevatedButton(
+            //     onPressed: isSRModelInitialed
+            //         ? () async {
+            //             if (isRecognizing) {
+            //               showToastWrapper("正在识别,请稍等");
+            //               return;
+            //             }
+            //
+            //             setState(() {
+            //               isRecognizing = true;
+            //               statusController.text = "正在识别...";
+            //             });
+            //             // File newFile = File(newPath!);
+            //             paraformerOnline.extractor.reset();
+            //             paraformerOnline.reset();
+            //             Map cache = {};
+            //             List<int>? fCache;
+            //             try {
+            //               WavLoader wavLoader = WavLoader();
+            //               final rawData = await rootBundle.load("assets/audio/asr_example.wav");
+            //               List<int> intData = List.empty(growable: true);
+            //               List<int> wavInfo = await wavLoader.loadByteData(rawData);
+            //               for (var i = wavInfo[0]; i < wavInfo[0] + wavInfo[1]; i += 2) {
+            //                 intData.add(rawData.getInt16(i, Endian.little).toInt());
+            //               }
+            //               int chunkStep = paraformerOnline.step;
+            //               int spLen = intData.length;
+            //               int spOff = 0;
+            //               List<int> flags;
+            //               String finalResult = "";
+            //               for (spOff = 0; spOff < intData.length; spOff += chunkStep) {
+            //                 if (spOff + chunkStep >= intData.length - 1) {
+            //                   chunkStep = spLen - spOff;
+            //                   flags = [1];
+            //                 } else {
+            //                   flags = [0];
+            //                 }
+            //                 Set result = await paraformerOnline.predictAsync({
+            //                   "waveform": intData.sublist(spOff, spOff + chunkStep),
+            //                   "flags": flags,
+            //                   "cache": cache,
+            //                   "f_cache": fCache
+            //                 });
+            //                 if (result.first == "") {
+            //                   finalResult += "，";
+            //                 } else {
+            //                   finalResult += result.first;
+            //                 }
+            //                 cache = result.elementAt(1);
+            //                 fCache = result.last;
+            //                 print(result.first);
+            //               }
+            //               print(finalResult);
+            //               // await inference(intData);
+            //             } catch (e) {
+            //               print(e.toString());
+            //               // speechRecognizer?.reset();
+            //             }
+            //             setState(() {
+            //               isRecognizing = false;
+            //               statusController.text = "识别完成";
+            //             });
+            //           }
+            //         : () {
+            //             showToastWrapper("正在初始化模型，请稍等");
+            //             return;
+            //           },
+            //     child: const Text("打开文件")),
             const SizedBox(
               height: 20,
             ),
