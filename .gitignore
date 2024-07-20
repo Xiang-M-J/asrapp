@@ -26,3 +26,4 @@ flutter_plugin_record
 FunASR-main
 *.pt
 *.log
+*.apk
