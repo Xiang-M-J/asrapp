@@ -211,13 +211,15 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     recordingDataSubscription = recordingDataController.stream.listen((buffer) async {
       if (buffer is FoodData) {
         waveform.addAll(uint8LtoInt16List(buffer.data!));
-        print(waveform.length);
+        // print(waveform.length);
         if (waveform.length > step) {    // 如果将其设置为 9600 会出问题，不知道为什么
-          List<int> subWaveform = waveform.sublist(0, step);
+          print(waveform.length);
+          List<int> subWaveform = waveform.sublist(0, step);     // 需要先保存截取的数据
           taskController?.add(() async{
             streamingInference(subWaveform, 0);
           });
           waveform.removeRange(0, step);
+          print(waveform.length);
         }
       }
     });
@@ -276,7 +278,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   Future<void> executeTasks(Stream<Future<void> Function()> taskStream) async {
     await for (var task in taskStream){
-      // print(task);
       await task();
     }
     setState(() {
