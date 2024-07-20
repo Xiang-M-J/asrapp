@@ -105,6 +105,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   String keyword = "开始识别"; // 关键词识别
   String cacheText = ""; // 用于储存 keyword 之前的识别结果
   bool lastStepIsWord = false; // 上一步识别的结果是否为文字，是为 ture，如果不是为空，则为false
+  int stepsNoWord = 0;
   // int keywordIdx = 0;        // keyword 的末尾的位置
   int puncIdx = 0; // 标点模型处理文本的起始位置
   String puncedResult = ""; // 标点好的结果
@@ -126,6 +127,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     lastStepIsWord = false;
     puncIdx = 0;
     puncedResult = "";
+    stepsNoWord = 0;
   }
 
   @override
@@ -284,8 +286,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
     if (isRecognizing) {
       if (result.first == "") {
+        stepsNoWord ++;
         if (lastStepIsWord) {
-          resultController.text += "，";
+          resultController.text += "";
         }
         lastStepIsWord = false;
         // if(usePunc && resultController.text.length - puncIdx > 10){
@@ -297,7 +300,14 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
         //   }
         // }
         // 需要注意此处需要清空 cache 和 fCache，否则可能会出现
-        cache = {};
+        // if(stepsNoWord >= 2){
+        //   cache = result.elementAt(1);
+        //   fCache = null;
+        // }else{
+        //   cache = result.elementAt(1);
+        //   fCache = null;
+        // }
+        cache = result.elementAt(1);
         fCache = null;
       } else {
         lastStepIsWord = true;
@@ -313,7 +323,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
     if (!isRecognizing) {
       int idx = fuzzySearch(cacheText);
-      // logger.i("cacheText: $cacheText, idx: $idx");
+      logger.i("cacheText: $cacheText, idx: $idx");
       if (idx != -1) {
         cacheText = "";
         // 这里需要将 cacheText 清空，否则在结束录音时，有时由于数据量太小，于是直接设置 isRecognizing 为 false
@@ -338,7 +348,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
           resultController.text = "${resultController.text.substring(0, resultController.text.length - 1)}。";
         }
       }
-
       setState(() {
         isRecognizing = false;
         statusController.text = "识别完成";
