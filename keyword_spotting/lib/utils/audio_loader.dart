@@ -2,10 +2,8 @@ import 'dart:core';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:ffmpeg_kit_flutter/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:keyword_spotting/utils/sound_utils.dart';
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 
 class WavLoader {
   int sampleRate = 16000;
@@ -51,23 +49,23 @@ class WavLoader {
   }
 }
 
-Future<String?> audioTransformUtils(String originPath) async {
-  String newPath = await getTemporaryAudioPath("wav");
-  try{
-    await FFmpegKit.execute('-i $originPath -ar 16000 -ab 32k -ac 1 $newPath')
-        .then((session) async {
-      final returnCode = await session.getReturnCode();
-      if (ReturnCode.isSuccess(returnCode)) {
-        return newPath;
-      } else if (ReturnCode.isCancel(returnCode)) {
-        return null;
-      } else {
-        return null;
-      }
-    });
-    return newPath;
-  }catch(e){
-    print(e.toString());
-    return null;
-  }
-}
+// Future<String?> audioTransformUtils(String originPath) async {
+//   String newPath = await getTemporaryAudioPath("wav");
+//   try{
+//     await FFmpegKit.execute('-i $originPath -ar 16000 -ab 32k -ac 1 $newPath')
+//         .then((session) async {
+//       final returnCode = await session.getReturnCode();
+//       if (ReturnCode.isSuccess(returnCode)) {
+//         return newPath;
+//       } else if (ReturnCode.isCancel(returnCode)) {
+//         return null;
+//       } else {
+//         return null;
+//       }
+//     });
+//     return newPath;
+//   }catch(e){
+//     print(e.toString());
+//     return null;
+//   }
+// }

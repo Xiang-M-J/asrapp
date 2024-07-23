@@ -1,3 +1,4 @@
+
 Map<String, int> decodeDict = {
   'a': 0,
   'b': 1,
@@ -28,7 +29,8 @@ Map<String, int> decodeDict = {
   '1': 26,
   '2': 27,
   '3': 28,
-  '4': 29
+  '4': 29,
+  '5': 30,
 };
 Map<int, String> encodeDict = {
   0: 'a',
@@ -60,13 +62,14 @@ Map<int, String> encodeDict = {
   26: '1',
   27: '2',
   28: '3',
-  29: '4'
+  29: '4',
+  30: '5',
 };
 
 class AhoCorasick {
   List<String> keywords;
   late int maxStates;
-  int maxCharacters = 26 + 4; // 26 为 26个字母，4 为 4个声调
+  int maxCharacters = 26 + 5; // 26 为 26个字母，5 为 5 个声调（包括轻声）
   late List<int> out;
   late List<int> fail;
   late List<List<int>> goto;
@@ -138,7 +141,7 @@ class AhoCorasick {
     return goto[answer][ch];
   }
 
-  searchWords(String text){
+  Map<String, List<int>> searchWords(String text){
     int currentState = 0;
     Map<String, List<int>> result = {};
     for(var i =0; i<text.length ;i++){
@@ -160,6 +163,24 @@ class AhoCorasick {
     return result;
   }
 }
+
+class AhoCorasickSearcher{
+  List<String> words;
+  AhoCorasick? ahoCorasick;
+  AhoCorasickSearcher(this.words){
+    ahoCorasick = AhoCorasick(words);
+  }
+
+  reset(List<String> words){
+    ahoCorasick = null;
+    ahoCorasick = AhoCorasick(words);
+  }
+  Map<String, List<int>>? search(String pinyin){
+    Map<String, List<int>>? result = ahoCorasick?.searchWords(pinyin);
+    return result;
+  }
+}
+
 
 
 void main(){

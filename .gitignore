@@ -12,6 +12,7 @@ android/.idea
 android/build
 wav2vec2-base-960h.required_operators.config
 wav2vec2-base-960h.required_operators.with_runtime_opt.config
+SER_depression
 
 *.pyc
 *.onnx

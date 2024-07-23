@@ -1,16 +1,18 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:keyword_spotting/pages/keywords_board.dart';
 import 'package:keyword_spotting/pages/scrollable_text_field.dart';
 import 'package:keyword_spotting/pages/show_toasts.dart';
+import 'package:keyword_spotting/utils/aho_corasick.dart';
 import 'package:keyword_spotting/utils/fsmnvad_dector.dart';
+import 'package:keyword_spotting/utils/keywords.dart';
 import 'package:keyword_spotting/utils/ort_env_utils.dart';
+import 'package:keyword_spotting/utils/pinyin_utils.dart';
 import 'package:keyword_spotting/utils/sentence_analysis.dart';
 import 'package:keyword_spotting/utils/similarity_text_index.dart';
-import 'package:keyword_spotting/utils/sound_utils.dart';
 import 'package:keyword_spotting/utils/speech_recognizer.dart';
 import 'package:keyword_spotting/utils/type_converter.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -45,7 +47,6 @@ class AsrScreen extends StatefulWidget {
 }
 
 class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixin {
-  // String _recordFilePath;
   final TextEditingController resultController = TextEditingController();
   final TextEditingController statusController = TextEditingController();
 
@@ -76,6 +77,12 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   FsmnVaDetector? vaDetector;
   // ErniePunctuation? erniePunctuation;
 
+  List<String> detectedKeywords = [];
+  List<int> detectedEmotion = [];
+  List<int> detectedTimes = [];
+  List<String> cachedKeywords = [];
+  List<int> cachedEmotion = [];
+
   static const sampleRate = 16000;
 
   final step = 16000;
@@ -94,9 +101,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   String keyword = "开始识别"; // 关键词识别
   String cacheText = ""; // 用于储存 keyword 之前的识别结果
   bool thisStepIsWord = false; // 当前步识别的结果是否为文字，是为 ture，如果不是为空，则为false
-  String thisStepResult = "";   // 当前步已经识别得到的结果，resultController.text = thisStepResult
+  String thisStepResult = ""; // 当前步已经识别得到的结果，resultController.text = thisStepResult
 
-  // ParaformerOnline paraformerOnline = ParaformerOnline();
+  AhoCorasickSearcher? ahoCorasickSearcher;
 
   var logger = Logger(
     filter: null, // Use the default LogFilter (-> only log in debug mode)
@@ -117,12 +124,13 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     vaDetector = FsmnVaDetector();
     // erniePunctuation = ErniePunctuation();
     initModel();
+    ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin());
   }
 
   void initModel() async {
     await speechRecognizer?.initModel();
     await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
-    // await paraformerOnline.initModel();
+
     setState(() {
       statusController.text = "语音识别模型已加载";
       isSRModelInitialed = true;
@@ -176,11 +184,10 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     super.dispose();
   }
 
-  void playRemindSound() async {
-    await mPlayer!.startPlayer(fromDataBuffer: remindSound, codec: Codec.pcm16WAV);
-  }
-
-  resetRecognition(){
+  resetRecognition() {
+    detectedEmotion.clear();
+    detectedKeywords.clear();
+    detectedTimes.clear();
     waveform.clear();
     voice.clear();
     cacheText = "";
@@ -190,7 +197,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   ///开始语音录制的方法
   void start() async {
-    if(isRecognizing) {
+    if (isRecognizing) {
       showToastWrapper("正在识别，请稍等");
       return;
     }
@@ -203,7 +210,8 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     recordingDataSubscription = recordingDataController.stream.listen((buffer) async {
       if (buffer is FoodData) {
         waveform.addAll(uint8LtoInt16List(buffer.data!));
-        if (waveform.length > step) {    // 如果将其设置为 9600 会出问题，不知道为什么
+        if (waveform.length > step) {
+          // 如果将其设置为 9600 会出问题，不知道为什么
           streamingInference(waveform.sublist(0, step), 0);
           waveform.removeRange(0, step);
         }
@@ -229,9 +237,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     try {
       if (waveform.length > 3200) {
         int numPadding = 16000 - waveform.length;
-        if(numPadding > 0) waveform.addAll(List<int>.generate(numPadding, (m) => 0));
+        if (numPadding > 0) waveform.addAll(List<int>.generate(numPadding, (m) => 0));
         streamingInference(waveform, 1);
-      }else{
+      } else {
         if (resultController.text != "" || resultController.text != "，") {
           if (resultController.text.endsWith("，")) {
             resultController.text = "${resultController.text.substring(0, resultController.text.length - 1)}。";
@@ -261,16 +269,17 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   }
 
   streamingInference(List<int> seg, int isFinal) async {
+    if (!isRecognizing) isRecognizing = true;
     List<List<int>>? segments;
     segments = await vaDetector?.predictASync(seg);
     if (segments == null || segments.isEmpty) {
       thisStepIsWord = false;
-    }else{
+    } else {
       for (var segment in segments) {
         int segB = segment[0] * 16;
         int segE = segment[1] * 16;
-        logger.i(
-            "分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segB, $segE]");
+        // logger.i(
+        //     "分段模型：startIdx 为 $startIdx, 识别波形长度为 ${seg.length}, 原始分段为 [${segment[0]}, ${segment[1]}] 识别段为 [$segB, $segE]");
         if (segB > startIdx + offset && segE < startIdx + step - offset) {
           voice.add(seg.sublist(segB, segE));
         } else if (segB > startIdx + offset && segE >= startIdx + step - offset) {
@@ -284,7 +293,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       thisStepIsWord = true;
     }
     if (voice.isEmpty) {
-      if(isFinal == 1){
+      if (isFinal == 1) {
         setState(() {
           isRecognizing = false;
           statusController.text = "识别完成";
@@ -295,82 +304,55 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
     List<int>? cacheVoice;
     Map? result;
-    String cacheTempText = "";
-    if (isRecognizing) {
-      if (!thisStepIsWord) {   // 如果当前步无语音，且存在之前的语音段，则证明已经暂停了说话
-        cacheVoice = concatVoice(voice);
-        voice.clear();
-        if (cacheVoice == null) {
-          return;
+
+    if (!thisStepIsWord) {
+      // 如果当前步无语音，且存在之前的语音段，则证明已经暂停了说话
+      cacheVoice = concatVoice(voice);
+      voice.clear();
+      if (cacheVoice == null) {
+        return;
+      }
+      result = await speechRecognize(cacheVoice);
+      thisStepResult += "${simpleSentenceProcess(result?["char"])}，";
+      resultController.text = thisStepResult;
+
+      String pinyin = getPinyin(simpleSentenceProcess(result?["char"]));
+      Map? results = ahoCorasickSearcher?.search(pinyin);
+      if (results != null && results.isNotEmpty) {
+        print(results);
+        for (var k in results.keys) {
+          detectedKeywords.add(pinyin2Keywords[k]!);
+          int idx = detectedEmotion.length;
+          detectedEmotion.add(0);  // 0 为暂时的情感
+          detectedTimes.add(results[k].length);
+          // todo 检测语音情感，根据idx来修改对应位
+          // await speechEmotionRecognize(cacheVoice, idx);
         }
-        result = await speechRecognize(cacheVoice);
-        thisStepResult += "${simpleSentenceProcess(result?["char"])}，";
-        resultController.text = thisStepResult;
-      } else {           // 如果当前步存在语音，且存在之前的语音段，则证明还在说话，只显示当前结果
-        cacheVoice = concatVoice(voice);
-        if (cacheVoice == null) {
-          voice.clear();
-          return;
-        }
-        result = await speechRecognize(cacheVoice);
-        resultController.text = thisStepResult + result?["char"].join("");
       }
     } else {
-      if (!thisStepIsWord) {
-        cacheVoice = concatVoice(voice);
+      // 如果当前步存在语音，且存在之前的语音段，则证明还在说话，只显示当前结果
+      cacheVoice = concatVoice(voice);
+      if (cacheVoice == null) {
         voice.clear();
-        if (cacheVoice == null) {
-          return;
-        }
-        result = await speechRecognize(cacheVoice);
-        cacheText += result?["char"].join();
-      } else {
-        cacheVoice = concatVoice(voice);
-        if (cacheVoice == null) {
-          voice.clear();
-          return;
-        }
-        result = await speechRecognize(cacheVoice);
-        cacheTempText = cacheText + result?["char"].join();
+        return;
       }
+      result = await speechRecognize(cacheVoice);
+      resultController.text = thisStepResult + result?["char"].join("");
+      // String pinyin = getPinyin(simpleSentenceProcess(result?["char"]));
+      // Map? results = ahoCorasickSearcher?.search(pinyin);
+      // if (results != null && results.isNotEmpty) {
+      //   for (var k in results.keys) {
+      //
+      //     detectedKeywords.add(pinyin2Keywords[k]!);
+      //     int idx = detectedEmotion.length;
+      //     detectedEmotion.add(0);  // 0 为暂时的情感
+      //     // todo 检测语音情感，根据idx来修改对应位
+      //     // await speechEmotionRecognize(cacheVoice, idx);
+      //   }
+      //   // detectedKeywords[pinyin2Keywords[]]
+      // }
     }
-    logger.i("cacheText: $cacheText, cacheTempText: $cacheTempText");
-
-    if (!isRecognizing) {
-      int idx1 = fuzzySearch(cacheText);
-      int idx2 = fuzzySearch(cacheTempText);
-      if (idx1 != -1) {
-        cacheText = "";  // cacheText 清空，否则在结束录音时，有时由于数据量太小，于是直接设置 isRecognizing 为 false
-        // 但是此时可能还有线程在运行语音识别，这样便会再次执行这段函数
-        // 如果不清空 cacheText 便会再次设置 isRecognizing = true，导致逻辑错误
-        cacheTempText = "";
-        voice.clear();
-
-        isRecognizing = true;
-        if (idx1 <= cacheText.length) {
-          resultController.text = cacheText.substring(idx1);
-        } else {
-          resultController.text = "";
-        }
-        setState(() {
-          statusController.text = "开始识别";
-        });
-      } else if(idx2 != -1){
-        cacheText = "";
-        cacheTempText = "";
-        isRecognizing = true;
-        voice.clear();
-        if (idx2 <= cacheText.length) {
-          resultController.text = cacheTempText.substring(idx2);
-        } else {
-          resultController.text = "";
-        }
-        setState(() {
-          statusController.text = "开始识别";
-        });
-      }
-    }
-
+    print(resultController.text);
     if (isFinal == 1) {
       voice.clear();
       setState(() {
@@ -406,7 +388,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     for (var v in voice) {
       cacheVoice.addAll(v);
     }
-    // voice.clear();
     if (cacheVoice.length < 800) {
       return null;
     } else {
@@ -418,7 +399,10 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('语音识别', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),),
+        title: const Text(
+          '关键词识别',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: Colors.blueAccent,
       ),
       body: Center(
@@ -507,19 +491,27 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
             const SizedBox(
               height: 20,
             ),
-            const SizedBox(
-              height: 20,
-            ),
-            Padding(
-                padding: const EdgeInsets.only(left: 10, top: 0, right: 10, bottom: 0),
-                child: ScrollableTextField(
-                  controller: resultController,
-                  hintText: '识别结果',
-                )),
+            // ElevatedButton(onPressed: (){
+            //   // tmp ++;
+            //   // detectedKeywords[tmp.toString()] = 1;
+            //   setState(() {
+            //
+            //   });
+            // }, child: const Text("点击我")),
             const SizedBox(
               height: 20,
             ),
 
+            Padding(
+                padding: const EdgeInsets.only(left: 30, top: 0, right: 30, bottom: 0),
+                child: KeywordsBoard(
+                  keywords: detectedKeywords,
+                  emotion: detectedEmotion,
+                  times: detectedTimes,
+                )),
+            const SizedBox(
+              height: 20,
+            ),
           ],
         ),
       ),
