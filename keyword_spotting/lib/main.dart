@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:keyword_spotting/pages/keywords_board.dart';
-import 'package:keyword_spotting/pages/scrollable_text_field.dart';
 import 'package:keyword_spotting/pages/show_toasts.dart';
 import 'package:keyword_spotting/utils/aho_corasick.dart';
 import 'package:keyword_spotting/utils/fsmnvad_dector.dart';
@@ -12,7 +10,7 @@ import 'package:keyword_spotting/utils/keywords.dart';
 import 'package:keyword_spotting/utils/ort_env_utils.dart';
 import 'package:keyword_spotting/utils/pinyin_utils.dart';
 import 'package:keyword_spotting/utils/sentence_analysis.dart';
-import 'package:keyword_spotting/utils/similarity_text_index.dart';
+import 'package:keyword_spotting/utils/speech_emotion_recognizer.dart';
 import 'package:keyword_spotting/utils/speech_recognizer.dart';
 import 'package:keyword_spotting/utils/type_converter.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -75,10 +73,11 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   SpeechRecognizer? speechRecognizer;
   FsmnVaDetector? vaDetector;
+  SpeechEmotionRecognizer? speechEmotionRecognizer;
   // ErniePunctuation? erniePunctuation;
 
   List<String> detectedKeywords = [];
-  List<int> detectedEmotion = [];
+  List<String> detectedEmotion = [];
   List<int> detectedTimes = [];
   List<String> cachedKeywords = [];
   List<int> cachedEmotion = [];
@@ -94,6 +93,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   String? recognizeResult;
   bool useVAD = false;
   bool usePunc = false;
+  bool withTone = false;   // 是否保留音调
 
   Timer? vadTimer;
   Timer? srTimer;
@@ -117,22 +117,24 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     initializeAudio();
 
     if (!isSRModelInitialed) {
-      statusController.text = "语音识别模型正在加载";
+      statusController.text = "模型正在加载";
     }
     initOrtEnv();
     speechRecognizer = SpeechRecognizer();
     vaDetector = FsmnVaDetector();
+    speechEmotionRecognizer = SpeechEmotionRecognizer();
     // erniePunctuation = ErniePunctuation();
     initModel();
-    ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin());
+    ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin(withTone: withTone));
+    initMap(withTone: withTone);
   }
 
   void initModel() async {
     await speechRecognizer?.initModel();
     await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
-
+    await speechEmotionRecognizer?.initModel();
     setState(() {
-      statusController.text = "语音识别模型已加载";
+      statusController.text = "模型已加载";
       isSRModelInitialed = true;
     });
   }
@@ -179,6 +181,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     vaDetector?.release();
     // erniePunctuation?.release();
     speechRecognizer?.release();
+    speechEmotionRecognizer?.release();
     // paraformerOnline.release();
     releaseOrtEnv();
     super.dispose();
@@ -315,18 +318,16 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       result = await speechRecognize(cacheVoice);
       thisStepResult += "${simpleSentenceProcess(result?["char"])}，";
       resultController.text = thisStepResult;
-
-      String pinyin = getPinyin(simpleSentenceProcess(result?["char"]));
+      String pinyin = getPinyin(simpleSentenceProcess(result?["char"]), withTone: withTone);
       Map? results = ahoCorasickSearcher?.search(pinyin);
       if (results != null && results.isNotEmpty) {
         print(results);
         for (var k in results.keys) {
           detectedKeywords.add(pinyin2Keywords[k]!);
           int idx = detectedEmotion.length;
-          detectedEmotion.add(0);  // 0 为暂时的情感
+          detectedEmotion.add("");  // ""  为暂时的情感
           detectedTimes.add(results[k].length);
-          // todo 检测语音情感，根据idx来修改对应位
-          // await speechEmotionRecognize(cacheVoice, idx);
+          await speechEmotionRecognize(cacheVoice, idx);
         }
       }
     } else {
@@ -373,7 +374,15 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     result = await speechRecognizer?.predictAsync(intData);
     return result;
   }
+  speechEmotionRecognize(List<int> cacheVoice, int idx) async {
+    String? result = await speechEmotionRecognizer?.predictAsync(cacheVoice);
+    if (result != null) {
+      detectedEmotion[idx] = result;
+    }
+    setState(() {
 
+    });
+  }
   int2time(int count) {
     String time = "";
     int hours = (count ~/ 60);
@@ -491,16 +500,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
             const SizedBox(
               height: 20,
             ),
-            // ElevatedButton(onPressed: (){
-            //   // tmp ++;
-            //   // detectedKeywords[tmp.toString()] = 1;
-            //   setState(() {
-            //
-            //   });
-            // }, child: const Text("点击我")),
-            const SizedBox(
-              height: 20,
-            ),
 
             Padding(
                 padding: const EdgeInsets.only(left: 30, top: 0, right: 30, bottom: 0),
@@ -517,4 +516,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       ),
     );
   }
+
+
 }

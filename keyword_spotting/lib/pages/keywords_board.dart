@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class KeywordsBoard extends StatefulWidget {
   List<String> keywords;
-  List<int> emotion;
+  List<String> emotion;
   List<int> times;
   KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.times});
 
@@ -17,20 +17,20 @@ class KeywordsBoardState extends State<KeywordsBoard> {
     super.initState();
   }
 
-  getEmotion(int id){
-    if (id == 1){    // 中性
+  getEmotion(String id){
+    if (id == "neutral"){    // 中性
       return "😐";
       return const Icon(Icons.add);
-    }else if(id == 2){   // 喜悦
+    }else if(id == "happy"){   // 喜悦
       return "😊";
       return const Icon(Icons.abc);
-    }else if(id == 3){   // 伤心
+    }else if(id == "sad"){   // 伤心
       return "😢";
     }
-    else if(id == 4){   // 恐惧
+    else if(id == "fear"){   // 恐惧
       return "😣";
     }
-    else if(id == 5){
+    else if(id == "angry"){
       return "😡";
     }
     else{

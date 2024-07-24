@@ -1,4 +1,3 @@
-
 Map<String, int> decodeDict = {
   'a': 0,
   'b': 1,
@@ -74,7 +73,8 @@ class AhoCorasick {
   late List<int> fail;
   late List<List<int>> goto;
   late int statesCount;
-  AhoCorasick(this.keywords) {
+  AhoCorasick(this.keywords, {bool withTone=true}) {
+    if(!withTone) maxCharacters = 26;
     maxStates = keywords.map((m) => m.length).reduce((a, b) => a + b);
     out = List.filled(maxStates + 1, 0);
     fail = List.filled(maxStates + 1, -1);
@@ -125,37 +125,36 @@ class AhoCorasick {
 
           out[goto[state][ch]] |= out[failure];
           queue.add(goto[state][ch]);
-
         }
       }
     }
     return states;
   }
 
-  findNextStates(int currentState, String nextInput){
+  findNextStates(int currentState, String nextInput) {
     int answer = currentState;
     int ch = decodeDict[nextInput]!;
-    while(goto[answer][ch] == -1){
+    while (goto[answer][ch] == -1) {
       answer = fail[answer];
     }
     return goto[answer][ch];
   }
 
-  Map<String, List<int>> searchWords(String text){
+  Map<String, List<int>> searchWords(String text) {
     int currentState = 0;
     Map<String, List<int>> result = {};
-    for(var i =0; i<text.length ;i++){
+    for (var i = 0; i < text.length; i++) {
       currentState = findNextStates(currentState, text[i]);
-      if (out[currentState] == 0){
+      if (out[currentState] == 0) {
         continue;
       }
-      for (var j = 0; j< keywords.length; j++){
-        if (out[currentState] & (1<<j) > 0){
+      for (var j = 0; j < keywords.length; j++) {
+        if (out[currentState] & (1 << j) > 0) {
           String word = keywords[j];
-          if(result.containsKey(word)){
-            result[word]?.add(i-word.length+1);
-          }else{
-            result[word] = [i-word.length+1];
+          if (result.containsKey(word)) {
+            result[word]?.add(i - word.length + 1);
+          } else {
+            result[word] = [i - word.length + 1];
           }
         }
       }
@@ -164,34 +163,33 @@ class AhoCorasick {
   }
 }
 
-class AhoCorasickSearcher{
+class AhoCorasickSearcher {
   List<String> words;
   AhoCorasick? ahoCorasick;
-  AhoCorasickSearcher(this.words){
+  AhoCorasickSearcher(this.words) {
     ahoCorasick = AhoCorasick(words);
   }
 
-  reset(List<String> words){
+  reset(List<String> words) {
     ahoCorasick = null;
     ahoCorasick = AhoCorasick(words);
   }
-  Map<String, List<int>>? search(String pinyin){
+
+  Map<String, List<int>>? search(String pinyin) {
     Map<String, List<int>>? result = ahoCorasick?.searchWords(pinyin);
     return result;
   }
 }
 
-
-
-void main(){
+void main() {
   List<String> words = ["he", "she", "hers", "his"];
   String texts = "ahishersheshehis";
-  
+
   AhoCorasick ahoCorasick = AhoCorasick(words);
   Map result = ahoCorasick.searchWords(texts);
-  for(var k in result.keys){
-    for(var i in result[k]){
-      print("Word: $k, appears from ${i.toString()} to ${i+k.length-1}");
+  for (var k in result.keys) {
+    for (var i in result[k]) {
+      print("Word: $k, appears from ${i.toString()} to ${i + k.length - 1}");
     }
   }
 }
