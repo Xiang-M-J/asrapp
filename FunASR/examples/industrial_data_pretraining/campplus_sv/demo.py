@@ -8,6 +8,6 @@ from funasr import AutoModel
 model = AutoModel(model="iic/speech_campplus_sv_zh-cn_16k-common")
 
 res = model.generate(
-    input="https://isv-data.oss-cn-hangzhou.aliyuncs.com/ics/MaaS/ASR/test_audio/asr_example_zh.wav"
+    input=r"D:\work\asrapp\FunASR\examples\industrial_data_pretraining\bicif_paraformer\test.wav"
 )
 print(res)

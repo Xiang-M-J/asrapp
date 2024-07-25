@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 
 class KeywordsBoard extends StatefulWidget {
-  List<String> keywords;
-  List<String> emotion;
-  List<int> times;
-  KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.times});
+  final List<String> keywords;
+  final List<String> emotion;
+  final List<int> times;
+  const KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.times});
 
   @override
   KeywordsBoardState createState() => KeywordsBoardState();

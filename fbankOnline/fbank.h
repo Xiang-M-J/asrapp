@@ -28,7 +28,7 @@ void WavFrontend(float* s, float** o, int sampleNum);
 
 void WavFrontendOnline(float* s, float** o, int sampleNum, int is_final);
 
-void WavFrontendOnline2(float* s, float** o, int sampleNum, int is_final);
+void extractFbank(float* s, float **o, int sampleNum);
 
 float random_gaussian();
 

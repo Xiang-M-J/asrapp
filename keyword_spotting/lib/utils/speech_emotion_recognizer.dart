@@ -23,23 +23,15 @@ class SpeechEmotionRecognizer {
     _session = null;
   }
 
-  initModel() async {
+  initModel({bool e2v=true}) async {
     _sessionOptions = OrtSessionOptions()
       ..setInterOpNumThreads(1)
       ..setIntraOpNumThreads(1)
       ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
-    const assetFileName = 'assets/models/emotion2vec.quant.onnx';
-    final rawAssetFile = await rootBundle.load(assetFileName);
-    final bytes = rawAssetFile.buffer.asUint8List();
-    _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
-  }
-
-  initMyModel() async{
-    _sessionOptions = OrtSessionOptions()
-      ..setInterOpNumThreads(1)
-      ..setIntraOpNumThreads(1)
-      ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
-    const assetFileName = 'assets/models/mtcn.quant.onnx';
+    String assetFileName = 'assets/models/mtcn.quant.onnx';
+    if (e2v){
+      assetFileName = "assets/models/emotion2vec.quant.onnx";
+    }
     final rawAssetFile = await rootBundle.load(assetFileName);
     final bytes = rawAssetFile.buffer.asUint8List();
     _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
@@ -57,8 +49,12 @@ class SpeechEmotionRecognizer {
     return idx;
   }
 
-  Future<String?> predictAsync(List<int> data) {
-    return compute(predict, data);
+  Future<String?> predictAsync(List<int> data, {bool e2v=true}) {
+    if (e2v) {
+      return compute(predict, data);
+    }else{
+      return compute(predictMy, data);
+    }
   }
 
   mean(List<double> doubleData) {
@@ -111,9 +107,6 @@ class SpeechEmotionRecognizer {
     return labels[argmax(logits)];
   }
 
-  Future<String?> predictMyAsync(List<int> data){
-    return compute(predictMy, data);
-  }
 
   String? predictMy(List<int> data){
     final feature = extractFbankOnline(data);
@@ -136,6 +129,5 @@ class SpeechEmotionRecognizer {
     }
     print(output);
     return labelsMy[argmax(output)];
-    print(output);
   }
 }

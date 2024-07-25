@@ -73,8 +73,16 @@ class AhoCorasick {
   late List<int> fail;
   late List<List<int>> goto;
   late int statesCount;
-  AhoCorasick(this.keywords, {bool withTone=true}) {
-    if(!withTone) maxCharacters = 26;
+  RegExp pattern = RegExp(r"\d");
+
+  bool withTone = true;
+  AhoCorasick(this.keywords, {bool withTone = true}) {
+    withTone = withTone;
+    if (!withTone) {
+      maxCharacters = 26 + 1; // 1 为分割号
+      decodeDict["|"] = 26;
+      pattern = RegExp(r"\|");
+    }
     maxStates = keywords.map((m) => m.length).reduce((a, b) => a + b);
     out = List.filled(maxStates + 1, 0);
     fail = List.filled(maxStates + 1, -1);
@@ -152,9 +160,12 @@ class AhoCorasick {
         if (out[currentState] & (1 << j) > 0) {
           String word = keywords[j];
           if (result.containsKey(word)) {
-            result[word]?.add(i - word.length + 1);
+            result[word]?.add(pattern.allMatches(text.substring(0, i - word.length + 1)).length);
+
+            // result[word]?.add(i - word.length + 1);
           } else {
-            result[word] = [i - word.length + 1];
+            result[word] = [pattern.allMatches(text.substring(0, i - word.length + 1)).length];
+
           }
         }
       }
@@ -166,8 +177,8 @@ class AhoCorasick {
 class AhoCorasickSearcher {
   List<String> words;
   AhoCorasick? ahoCorasick;
-  AhoCorasickSearcher(this.words) {
-    ahoCorasick = AhoCorasick(words);
+  AhoCorasickSearcher(this.words, {bool withTone=true}) {
+    ahoCorasick = AhoCorasick(words, withTone: withTone);
   }
 
   reset(List<String> words) {
@@ -182,14 +193,17 @@ class AhoCorasickSearcher {
 }
 
 void main() {
-  List<String> words = ["he", "she", "hers", "his"];
-  String texts = "ahishersheshehis";
-
-  AhoCorasick ahoCorasick = AhoCorasick(words);
-  Map result = ahoCorasick.searchWords(texts);
-  for (var k in result.keys) {
-    for (var i in result[k]) {
-      print("Word: $k, appears from ${i.toString()} to ${i + k.length - 1}");
-    }
-  }
+  // List<String> words = ["he", "she", "hers", "his"];
+  // String texts = "ahishersheshehis";
+  //
+  // AhoCorasick ahoCorasick = AhoCorasick(words);
+  // Map result = ahoCorasick.searchWords(texts);
+  // for (var k in result.keys) {
+  //   for (var i in result[k]) {
+  //     print("Word: $k, appears from ${i.toString()} to ${i + k.length - 1}");
+  //   }
+  // }
+  var pattern = RegExp(r"\|");
+  var text = "wo|wo|se|de|";
+  print(pattern.allMatches(text).length);
 }

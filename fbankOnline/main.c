@@ -176,8 +176,40 @@ void test_wave2fbank() {
 	return;
 }
 
+void test_extractFbank() {
+	float* waveform;
+	float** output = NULL;
+	int bankNum = 8;
+	int sampleNum = 3200;
+	int lfr_m = 7, lfr_n = 6;
+	int m = 1 + (sampleNum - 400) / 160;
+	waveform = (float*)malloc(sizeof(float) * (sampleNum));
+	output = create2dVector(m, bankNum);
+	for (int i = 0; i < sampleNum; i++)
+	{
+		waveform[i] = (sin(0.01 * i));
+	}
+	// 最小为 800 点，即 20 ms
+	extractFbank(waveform, output, sampleNum);
+
+	for (size_t i = 0; i < m; i++)
+	{
+		for (size_t j = 0; j < bankNum; j++)
+		{
+			printf("%f,", output[i][j]);
+		}
+		printf("\n\n\n");
+	}
+
+
+	free(waveform);
+	free2dVector(output, m);
+	return;
+}
+
 int main(int argc, char** argv) {
 	//test_rft();
-	test_wave2fbank();
+	//test_wave2fbank();
+	test_extractFbank();
 	//test_gassuian();
 }

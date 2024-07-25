@@ -94,6 +94,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   bool useVAD = false;
   bool usePunc = false;
   bool withTone = false;   // 是否保留音调
+  bool e2v = true;        // 是否使用 emotion2vec 模型，e2v 为false时使用mtcn模型
 
   Timer? vadTimer;
   Timer? srTimer;
@@ -125,14 +126,14 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     speechEmotionRecognizer = SpeechEmotionRecognizer();
     // erniePunctuation = ErniePunctuation();
     initModel();
-    ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin(withTone: withTone));
+    ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin(withTone: withTone), withTone: withTone);
     initMap(withTone: withTone);
   }
 
   void initModel() async {
     await speechRecognizer?.initModel();
     await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
-    await speechEmotionRecognizer?.initModel();
+    await speechEmotionRecognizer?.initModel(e2v: e2v);
     setState(() {
       statusController.text = "模型已加载";
       isSRModelInitialed = true;
@@ -320,14 +321,23 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       resultController.text = thisStepResult;
       String pinyin = getPinyin(simpleSentenceProcess(result?["char"]), withTone: withTone);
       Map? results = ahoCorasickSearcher?.search(pinyin);
+      List<List<int>> timestamps = result?["timestamp"];
+
       if (results != null && results.isNotEmpty) {
-        print(results);
+        print(timestamps.length);
+        print(pinyin);
+        List<int> tmpVoice = List<int>.empty(growable: true);
         for (var k in results.keys) {
-          detectedKeywords.add(pinyin2Keywords[k]!);
+          tmpVoice.clear();
+          String word = pinyin2Keywords[k]!;
+          detectedKeywords.add(word);
           int idx = detectedEmotion.length;
           detectedEmotion.add("");  // ""  为暂时的情感
           detectedTimes.add(results[k].length);
-          await speechEmotionRecognize(cacheVoice, idx);
+          for(var t in results[k]){
+            tmpVoice.addAll(cacheVoice.sublist(timestamps[t][0] * 16, timestamps[t+word.length-2][1] * 16));
+          }
+          await speechEmotionRecognize(tmpVoice, idx);
         }
       }
     } else {
@@ -339,19 +349,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       }
       result = await speechRecognize(cacheVoice);
       resultController.text = thisStepResult + result?["char"].join("");
-      // String pinyin = getPinyin(simpleSentenceProcess(result?["char"]));
-      // Map? results = ahoCorasickSearcher?.search(pinyin);
-      // if (results != null && results.isNotEmpty) {
-      //   for (var k in results.keys) {
-      //
-      //     detectedKeywords.add(pinyin2Keywords[k]!);
-      //     int idx = detectedEmotion.length;
-      //     detectedEmotion.add(0);  // 0 为暂时的情感
-      //     // todo 检测语音情感，根据idx来修改对应位
-      //     // await speechEmotionRecognize(cacheVoice, idx);
-      //   }
-      //   // detectedKeywords[pinyin2Keywords[]]
-      // }
     }
     print(resultController.text);
     if (isFinal == 1) {
@@ -375,7 +372,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     return result;
   }
   speechEmotionRecognize(List<int> cacheVoice, int idx) async {
-    String? result = await speechEmotionRecognizer?.predictAsync(cacheVoice);
+    String? result = await speechEmotionRecognizer?.predictAsync(cacheVoice, e2v: e2v);
     if (result != null) {
       detectedEmotion[idx] = result;
     }

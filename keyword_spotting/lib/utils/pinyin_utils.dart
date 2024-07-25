@@ -8,7 +8,7 @@ String getPinyin(String originText, {bool withTone=true}){
   if (withTone){
     pinyin = PinyinHelper.getPinyinE(chinese, separator: "", format: PinyinFormat.WITH_TONE_NUMBER);
   }else{
-    pinyin = PinyinHelper.getPinyinE(chinese, separator: "", format: PinyinFormat.WITHOUT_TONE);
+    pinyin = "${PinyinHelper.getPinyinE(chinese, separator: "|", format: PinyinFormat.WITHOUT_TONE)}|";
   }
   return pinyin;
 }

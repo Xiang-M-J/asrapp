@@ -19,19 +19,16 @@ final class Cache extends Struct {
 
 // 语音唤醒、语音识别改为开关、实时识别
 
-final DynamicLibrary fbankLib = Platform.isAndroid
-    ? DynamicLibrary.open("libFbank.so")
-    : DynamicLibrary.process();
+final DynamicLibrary fbankLib = Platform.isAndroid ? DynamicLibrary.open("libFbank.so") : DynamicLibrary.process();
 
-typedef FbankFunc = Void Function(
-    Pointer<Float>, Pointer<Pointer<Float>>, Int32);
+typedef FbankFunc = Void Function(Pointer<Float>, Pointer<Pointer<Float>>, Int32);
 
 final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontend =
     fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontend").asFunction();
-final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int)
-    wavFrontendOnline = fbankLib
-        .lookup<NativeFunction<FbankFunc>>("WavFrontendOnline")
-        .asFunction();
+final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) wavFrontendOnline =
+    fbankLib.lookup<NativeFunction<FbankFunc>>("WavFrontendOnline").asFunction();
+final void Function(Pointer<Float>, Pointer<Pointer<Float>>, int) extractF =
+    fbankLib.lookup<NativeFunction<FbankFunc>>("extractFbank").asFunction();
 
 class WavFrontendWithCache {
   List<int>? cache;
@@ -39,7 +36,7 @@ class WavFrontendWithCache {
 
   WavFrontendWithCache();
 
-  reset(){
+  reset() {
     cache = null;
   }
 
@@ -83,8 +80,7 @@ Pointer<Float> uint8list2FloatPointer(List<int> list) {
   return fp;
 }
 
-List<List<double>> floatMat2FloatList(
-    Pointer<Pointer<Float>> m, int axis1, int axis2) {
+List<List<double>> floatMat2FloatList(Pointer<Pointer<Float>> m, int axis1, int axis2) {
   List<List<double>> a = List.empty(growable: true);
   for (var i = 0; i < axis1; i++) {
     List<double> b = List.empty(growable: true);
@@ -96,8 +92,7 @@ List<List<double>> floatMat2FloatList(
   return a;
 }
 
-List<List<double>> floatMat2FloatListWithRescale(
-    Pointer<Pointer<Float>> m, int axis1, int axis2, double size) {
+List<List<double>> floatMat2FloatListWithRescale(Pointer<Pointer<Float>> m, int axis1, int axis2, double size) {
   List<List<double>> a = List.empty(growable: true);
   for (var i = 0; i < axis1; i++) {
     List<double> b = List.empty(growable: true);
@@ -109,8 +104,7 @@ List<List<double>> floatMat2FloatListWithRescale(
   return a;
 }
 
-List<List<double>> extractFbank(List<int> waveform,
-{int encoderOutputSize = 512, bool rescale = false}) {
+List<List<double>> extractFbank(List<int> waveform, {int encoderOutputSize = 512, bool rescale = false}) {
   Pointer<Float> waveformPointer = uint8list2FloatPointer(waveform);
   int sampleNum = waveform.length;
   int wlen = 25 * 16;
@@ -131,7 +125,7 @@ List<List<double>> extractFbank(List<int> waveform,
   //   fbank = floatMat2FloatListWithRescale(
   //       output, axis1, axis2, sqrt(encoderOutputSize));
   // } else {
-    fbank = floatMat2FloatList(output, axis1, axis2);
+  fbank = floatMat2FloatList(output, axis1, axis2);
   // }
   calloc.free(waveformPointer);
   for (var i = 0; i < axis1; i++) {
@@ -163,6 +157,31 @@ List<List<double>> extractFbankOnline(List<int> waveform) {
   List<List<double>> fbank = floatMat2FloatList(output, axis1, axis2);
   calloc.free(waveformPointer);
   for (var i = 0; i < axis1; i++) {
+    calloc.free(output[i]);
+  }
+  calloc.free(output);
+  return fbank;
+}
+
+List<List<double>> extractFbankOnly(List<int> waveform) {
+  Pointer<Float> waveformPointer = uint8list2FloatPointer(waveform);
+  int sampleNum = waveform.length;
+  int wlen = 25 * 16;
+  int inc = 10 * 16;
+  int m = 1 + (sampleNum - wlen) ~/ inc;
+
+  Pointer<Pointer<Float>> output = calloc<Pointer<Float>>(m * 4);
+  for (var i = 0; i < m; i++) {
+    output[i] = calloc<Float>(80 * 4);
+    for (var j = 0; j < 80; j++) {
+      output[i][j] = 0.0;
+    }
+  }
+  extractF(waveformPointer, output, sampleNum);
+
+  List<List<double>> fbank = floatMat2FloatList(output, m, 80);
+  calloc.free(waveformPointer);
+  for (var i = 0; i < m; i++) {
     calloc.free(output[i]);
   }
   calloc.free(output);
