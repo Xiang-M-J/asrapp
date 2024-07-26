@@ -1,15 +1,20 @@
 import 'dart:async';
-import 'package:audio_session/audio_session.dart';
+import 'dart:math';
+import 'dart:typed_data';
+import 'package:audio_session/audio_session.dart' as AS;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:keyword_spotting/pages/keywords_board.dart';
 import 'package:keyword_spotting/pages/show_toasts.dart';
 import 'package:keyword_spotting/utils/aho_corasick.dart';
+import 'package:keyword_spotting/utils/audio_loader.dart';
 import 'package:keyword_spotting/utils/fsmnvad_dector.dart';
 import 'package:keyword_spotting/utils/keywords.dart';
 import 'package:keyword_spotting/utils/ort_env_utils.dart';
 import 'package:keyword_spotting/utils/pinyin_utils.dart';
 import 'package:keyword_spotting/utils/sentence_analysis.dart';
+import 'package:keyword_spotting/utils/speaker_recognizer.dart';
 import 'package:keyword_spotting/utils/speech_emotion_recognizer.dart';
 import 'package:keyword_spotting/utils/speech_recognizer.dart';
 import 'package:keyword_spotting/utils/type_converter.dart';
@@ -73,12 +78,13 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   SpeechRecognizer? speechRecognizer;
   FsmnVaDetector? vaDetector;
-  SpeechEmotionRecognizer? speechEmotionRecognizer;
+  Map<bool, SpeechEmotionRecognizer?> speechEmotionRecognizers = {true: null, false: null};
+  SpeakerRecognizer? speakerRecognizer;
   // ErniePunctuation? erniePunctuation;
 
   List<String> detectedKeywords = [];
   List<String> detectedEmotion = [];
-  List<int> detectedTimes = [];
+  List<int> detectedSpeaker = [];
   List<String> cachedKeywords = [];
   List<int> cachedEmotion = [];
 
@@ -86,15 +92,17 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   final step = 16000;
 
-  bool isSRModelInitialed = false;
+  bool isModelInitialed = false;
   bool isRecording = false;
   bool isRecognizing = false; // 是否正在识别
 
   String? recognizeResult;
   bool useVAD = false;
   bool usePunc = false;
-  bool withTone = false;   // 是否保留音调
-  bool e2v = true;        // 是否使用 emotion2vec 模型，e2v 为false时使用mtcn模型
+  bool withTone = false; // 是否保留音调
+
+  List<String> emotionModels = ["e2v", "self"];
+  bool e2v = false; // 是否使用 emotion2vec 模型，e2v 为false时使用mtcn模型
 
   Timer? vadTimer;
   Timer? srTimer;
@@ -105,6 +113,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   String thisStepResult = ""; // 当前步已经识别得到的结果，resultController.text = thisStepResult
 
   AhoCorasickSearcher? ahoCorasickSearcher;
+  // Map<String, SpeechEmotionRecognizer> cacheRecognizer = {};
 
   var logger = Logger(
     filter: null, // Use the default LogFilter (-> only log in debug mode)
@@ -117,13 +126,15 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     super.initState();
     initializeAudio();
 
-    if (!isSRModelInitialed) {
+    if (!isModelInitialed) {
       statusController.text = "模型正在加载";
     }
     initOrtEnv();
     speechRecognizer = SpeechRecognizer();
     vaDetector = FsmnVaDetector();
-    speechEmotionRecognizer = SpeechEmotionRecognizer();
+    speechEmotionRecognizers[e2v] = SpeechEmotionRecognizer();
+
+    speakerRecognizer = SpeakerRecognizer();
     // erniePunctuation = ErniePunctuation();
     initModel();
     ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin(withTone: withTone), withTone: withTone);
@@ -133,10 +144,11 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   void initModel() async {
     await speechRecognizer?.initModel();
     await vaDetector?.initModel("assets/models/fsmn_vad.onnx");
-    await speechEmotionRecognizer?.initModel(e2v: e2v);
+    await speechEmotionRecognizers[e2v]?.initModel(e2v: e2v);
+    await speakerRecognizer?.initModel();
     setState(() {
       statusController.text = "模型已加载";
-      isSRModelInitialed = true;
+      isModelInitialed = true;
     });
   }
 
@@ -146,20 +158,20 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       throw RecordingPermissionException("Microphone permission not granted");
     }
     await mRecorder!.openRecorder();
-    final session = await AudioSession.instance;
-    await session.configure(AudioSessionConfiguration(
-      avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
+    final session = await AS.AudioSession.instance;
+    await session.configure(AS.AudioSessionConfiguration(
+      avAudioSessionCategory: AS.AVAudioSessionCategory.playAndRecord,
       avAudioSessionCategoryOptions:
-          AVAudioSessionCategoryOptions.allowBluetooth | AVAudioSessionCategoryOptions.defaultToSpeaker,
-      avAudioSessionMode: AVAudioSessionMode.spokenAudio,
-      avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
-      avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-      androidAudioAttributes: const AndroidAudioAttributes(
-        contentType: AndroidAudioContentType.speech,
-        flags: AndroidAudioFlags.none,
-        usage: AndroidAudioUsage.voiceCommunication,
+          AS.AVAudioSessionCategoryOptions.allowBluetooth | AS.AVAudioSessionCategoryOptions.defaultToSpeaker,
+      avAudioSessionMode: AS.AVAudioSessionMode.spokenAudio,
+      avAudioSessionRouteSharingPolicy: AS.AVAudioSessionRouteSharingPolicy.defaultPolicy,
+      avAudioSessionSetActiveOptions: AS.AVAudioSessionSetActiveOptions.none,
+      androidAudioAttributes: const AS.AndroidAudioAttributes(
+        contentType: AS.AndroidAudioContentType.speech,
+        flags: AS.AndroidAudioFlags.none,
+        usage: AS.AndroidAudioUsage.voiceCommunication,
       ),
-      androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+      androidAudioFocusGainType: AS.AndroidAudioFocusGainType.gain,
       androidWillPauseWhenDucked: true,
     ));
     setState(() {
@@ -180,9 +192,11 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     mPlayer!.closePlayer();
     mPlayer = null;
     vaDetector?.release();
+    speakerRecognizer?.release();
     // erniePunctuation?.release();
     speechRecognizer?.release();
-    speechEmotionRecognizer?.release();
+    speechEmotionRecognizers[true]?.release();
+    speechEmotionRecognizers[false]?.release();
     // paraformerOnline.release();
     releaseOrtEnv();
     super.dispose();
@@ -191,7 +205,8 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   resetRecognition() {
     detectedEmotion.clear();
     detectedKeywords.clear();
-    detectedTimes.clear();
+    detectedSpeaker.clear();
+    speakerRecognizer?.cacheEmbeddings.clear();
     waveform.clear();
     voice.clear();
     cacheText = "";
@@ -201,10 +216,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
 
   ///开始语音录制的方法
   void start() async {
-    if (isRecognizing) {
-      showToastWrapper("正在识别，请稍等");
-      return;
-    }
     assert(mRecorderIsInitialed);
     resetRecognition();
     setState(() {
@@ -272,6 +283,10 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     }
   }
 
+  void play(List<int> wav) {
+    mPlayer?.startPlayer(fromDataBuffer: intList2Uint8L(wav), codec: Codec.pcm16);
+  }
+
   streamingInference(List<int> seg, int isFinal) async {
     if (!isRecognizing) isRecognizing = true;
     List<List<int>>? segments;
@@ -312,6 +327,10 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     if (!thisStepIsWord) {
       // 如果当前步无语音，且存在之前的语音段，则证明已经暂停了说话
       cacheVoice = concatVoice(voice);
+      List<int> voiceEnd = voice.map((m) => m.length).toList();
+      for(var i = 1; i<voiceEnd.length;i++){
+        voiceEnd[i] += voiceEnd[i-1];
+      }
       voice.clear();
       if (cacheVoice == null) {
         return;
@@ -320,26 +339,31 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       thisStepResult += "${simpleSentenceProcess(result?["char"])}，";
       resultController.text = thisStepResult;
       String pinyin = getPinyin(simpleSentenceProcess(result?["char"]), withTone: withTone);
-      Map? results = ahoCorasickSearcher?.search(pinyin);
+      Map<int, String>? results = ahoCorasickSearcher?.search(pinyin);
       List<List<int>> timestamps = result?["timestamp"];
-
+      List<List<int>> keywordsVoice = [];
+      int sIdx = detectedKeywords.length;
       if (results != null && results.isNotEmpty) {
-        print(timestamps.length);
-        print(pinyin);
         List<int> tmpVoice = List<int>.empty(growable: true);
         for (var k in results.keys) {
-          tmpVoice.clear();
-          String word = pinyin2Keywords[k]!;
+          String word = pinyin2Keywords[results[k]]!;
           detectedKeywords.add(word);
           int idx = detectedEmotion.length;
-          detectedEmotion.add("");  // ""  为暂时的情感
-          detectedTimes.add(results[k].length);
-          for(var t in results[k]){
-            tmpVoice.addAll(cacheVoice.sublist(timestamps[t][0] * 16, timestamps[t+word.length-2][1] * 16));
-          }
+          detectedEmotion.add(""); // ""  为暂时的情感
+          detectedSpeaker.add(-1); // 暂时的分类
+          // detectedTimes.add(results[k].length);
+          int tS = max(0, timestamps[k][0] * 16 - 1600);
+          int tE = min(cacheVoice.length, timestamps[k + word.length - 1][1] * 16 + 1600);
+          print("begin: $tS, end: $tE");
+          tmpVoice = cacheVoice.sublist(tS, tE);
+          keywordsVoice.add(tmpVoice);
+          // play(tmpVoice);
           await speechEmotionRecognize(tmpVoice, idx);
+          speakerRecognizeWithCache(keywordsVoice, sIdx);
         }
+
       }
+
     } else {
       // 如果当前步存在语音，且存在之前的语音段，则证明还在说话，只显示当前结果
       cacheVoice = concatVoice(voice);
@@ -371,15 +395,44 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     result = await speechRecognizer?.predictAsync(intData);
     return result;
   }
+
   speechEmotionRecognize(List<int> cacheVoice, int idx) async {
-    String? result = await speechEmotionRecognizer?.predictAsync(cacheVoice, e2v: e2v);
+    String? result = await speechEmotionRecognizers[e2v]?.predictAsync(cacheVoice, e2v: e2v);
     if (result != null) {
       detectedEmotion[idx] = result;
     }
-    setState(() {
-
-    });
+    setState(() {});
   }
+
+  speakerRecognizeWithCache(List<List<int>> keywordsVoice, int sIdx) async{
+    for(var i = 0; i<keywordsVoice.length; i++){
+      int? spk = await speakerRecognizer?.predictAsyncWithCache(keywordsVoice[i]);
+      print(spk);
+      if(spk == null){
+        detectedSpeaker[sIdx + i] = -1;
+      }else{
+        detectedSpeaker[sIdx+i] = spk;
+      }
+    }
+  }
+
+  speakerRecognize(List<List<int>> keywordsVoice, int sIdx) async {
+    List<List<int>>? group = await speakerRecognizer?.predictAsync(keywordsVoice);
+    print("group: $group");
+    if (group == null) {
+      for (var i = 0; i < keywordsVoice.length; i++) {
+        detectedSpeaker[sIdx + i] = 0;
+      }
+    } else {
+      for (var i = 0; i < group.length; i++) {
+        for (var g in group[i]) {
+          detectedSpeaker[sIdx + g] = i;
+        }
+      }
+    }
+    setState(() {});
+  }
+
   int2time(int count) {
     String time = "";
     int hours = (count ~/ 60);
@@ -450,7 +503,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
               height: 40,
             ),
             GestureDetector(
-              onTap: isSRModelInitialed
+              onTap: isModelInitialed
                   ? () {
                       if (isRecording) {
                         setState(() {
@@ -460,6 +513,14 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
                         });
                         stop();
                       } else {
+                        if (isRecognizing) {
+                          showToastWrapper("正在识别，请稍等");
+                          return;
+                        }
+                        if (!isModelInitialed) {
+                          showToastWrapper("模型未初始化，请稍等");
+                          return;
+                        }
                         _count = 0;
                         setState(() {
                           isRecording = true;
@@ -479,7 +540,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
               child: Container(
                 height: 128,
                 width: 128,
-
                 decoration: BoxDecoration(
                   color: isRecording ? Colors.green : Colors.grey,
                   borderRadius: BorderRadius.circular(64),
@@ -494,25 +554,93 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
                 ),
               ),
             ),
+            // ElevatedButton(onPressed: () async {
+            //   WavLoader wavloader = WavLoader();
+            //   List<String> audioList = ["A2_1.wav", "A2_2.wav", "D7_859.wav"];
+            //   List<List<int>>  kwAudios = [];
+            //   for(var audio in audioList){
+            //     ByteData byte = await rootBundle.load("assets/audio/$audio");
+            //     List<int> info = await wavloader.loadByteData(byte);
+            //     List<int> wav = [];
+            //     for(var i = info[0]; i < info[0] + info[1]; i+=2){
+            //       wav.add(byte.getInt16(i, Endian.little).toInt());
+            //     }
+            //     kwAudios.add(wav);
+            //   }
+            //   List<List<int>>? m = await speakerRecognizer?.predictAsync(kwAudios);
+            //   print(m);
+            // }, child: const Text("click")),
             const SizedBox(
               height: 20,
             ),
-
             Padding(
                 padding: const EdgeInsets.only(left: 30, top: 0, right: 30, bottom: 0),
                 child: KeywordsBoard(
                   keywords: detectedKeywords,
                   emotion: detectedEmotion,
-                  times: detectedTimes,
+                  speaker: detectedSpeaker,
                 )),
             const SizedBox(
               height: 20,
             ),
+            Padding(
+              padding: const EdgeInsets.only(left: 30, top: 0, right: 30, bottom: 0),
+              child: Row(
+                children: [
+                  const Text("情感模型："),
+                  DropdownMenu(
+                    width: 100,
+                    initialSelection: emotionModels[e2v ? 0 : 1],
+                    dropdownMenuEntries: emotionModels.map((e) => DropdownMenuEntry(value: e, label: e)).toList(),
+                    onSelected: (s) async {
+                      if (!isModelInitialed) return;
+                      if (isRecording) {
+                        showToastWrapper("正在录音，请稍等");
+                        return;
+                      }
+                      if (isRecognizing) {
+                        showToastWrapper("正在识别，请稍等");
+                        return;
+                      }
+                      if (s == emotionModels[0]) {
+                        if (e2v) return;
+                        e2v = true;
+                        setState(() {
+                          statusController.text = "正在加载模型";
+                          isModelInitialed = false;
+                        });
+                        if(speechEmotionRecognizers[e2v] == null){
+                          speechEmotionRecognizers[e2v] = SpeechEmotionRecognizer();
+                          await speechEmotionRecognizers[e2v]?.initModel(e2v: e2v);
+                        }
+                        setState(() {
+                          statusController.text = "加载模型完成";
+                          isModelInitialed = true;
+                        });
+                      } else {
+                        if (!e2v) return;
+                        e2v = false;
+                        setState(() {
+                          statusController.text = "正在加载模型";
+                          isModelInitialed = false;
+                        });
+                        if(speechEmotionRecognizers[e2v] == null){
+                          speechEmotionRecognizers[e2v] = SpeechEmotionRecognizer();
+                          await speechEmotionRecognizers[e2v]?.initModel(e2v: e2v);
+                        }
+                        setState(() {
+                          statusController.text = "加载模型完成";
+                          isModelInitialed = true;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            )
           ],
         ),
       ),
     );
   }
-
-
 }

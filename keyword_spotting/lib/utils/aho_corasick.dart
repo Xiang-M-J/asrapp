@@ -186,9 +186,21 @@ class AhoCorasickSearcher {
     ahoCorasick = AhoCorasick(words);
   }
 
-  Map<String, List<int>>? search(String pinyin) {
+  Map<int, String> idx2Keyword(Map<String, List<int>> res){
+    Map<int, String> newRes = {};
+    for(var k in res.keys){
+      for(var v in res[k]!){
+        newRes[v] = k;
+      }
+    }
+    return Map.fromEntries(newRes.entries.toList()..sort((e1, e2) => e1.key > e2.key ? 1:-1));
+  }
+
+  Map<int, String>? search(String pinyin) {
     Map<String, List<int>>? result = ahoCorasick?.searchWords(pinyin);
-    return result;
+    if (result == null) return null;
+
+    return idx2Keyword(result);
   }
 }
 
@@ -206,4 +218,5 @@ void main() {
   var pattern = RegExp(r"\|");
   var text = "wo|wo|se|de|";
   print(pattern.allMatches(text).length);
+  // print(idx2Keyword({"1": [1, 3], "2":[2], "3": [6, 5], "4": [4]}));
 }

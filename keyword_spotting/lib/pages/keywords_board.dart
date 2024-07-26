@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 class KeywordsBoard extends StatefulWidget {
   final List<String> keywords;
   final List<String> emotion;
-  final List<int> times;
-  const KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.times});
+  final List<int> speaker;
+  const KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.speaker});
 
   @override
   KeywordsBoardState createState() => KeywordsBoardState();
@@ -46,14 +46,14 @@ class KeywordsBoardState extends State<KeywordsBoard> {
       dense: true,
       leading: Text("情绪", style: TextStyle(fontSize: 16),),
       title: Text("关键词", style: TextStyle(fontSize: 16),),
-      trailing: Text("次数", style: TextStyle(fontSize: 16),),
+      trailing: Text("说话人", style: TextStyle(fontSize: 16),),
     ));
     for(var i = 0; i<widget.keywords.length; i++){
       list.add(ListTile(
         dense: true,
         leading: Text(getEmotion(widget.emotion[i]), style: const TextStyle(fontSize: 16)),
         title: Text(widget.keywords[i], style: const TextStyle(fontSize: 12)),
-        trailing: Text(widget.times[i].toString(), style: const TextStyle(fontSize: 16)),
+        trailing: Text(widget.speaker[i].toString(), style: const TextStyle(fontSize: 16)),
       ));
     }
     return list;

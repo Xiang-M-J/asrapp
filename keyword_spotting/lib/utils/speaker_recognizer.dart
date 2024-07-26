@@ -7,14 +7,18 @@ import 'package:onnxruntime/onnxruntime.dart';
 
 import 'feature_utils.dart';
 
-class SpeechEmotionRecognizer {
+
+class SpeakerRecognizer {
   OrtSessionOptions? _sessionOptions;
   OrtSession? _session;
+
+  List<List<double>> cacheEmbeddings = [];
 
   static const int _batch = 1;
   reset() {}
 
   release() {
+    cacheEmbeddings.clear();
     _sessionOptions?.release();
     _sessionOptions = null;
     _session?.release();
@@ -32,6 +36,26 @@ class SpeechEmotionRecognizer {
     _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
   }
 
+  Future<int?> predictAsyncWithCache(List<int> data) async {
+
+    List<double>? e = await compute(predict, data);
+    if (e == null) return null;
+    if(cacheEmbeddings.isEmpty){
+      cacheEmbeddings.add(e);
+      return cacheEmbeddings.length - 1;
+    }
+    for(var i = 0; i<cacheEmbeddings.length; i++){
+      double sim = cosineSimilarity(e, cacheEmbeddings[i]);
+      print(sim);
+      if(sim > 0.5) {
+        cacheEmbeddings[i] = e;
+        return i;
+      }
+    }
+    cacheEmbeddings.add(e);
+    return cacheEmbeddings.length - 1;
+  }
+
   Future<List<List<int>>?> predictAsync(List<List<int>> data) async {
     if (data.length == 1) return null;
     List<List<double>> embeddings = [];
@@ -45,38 +69,40 @@ class SpeechEmotionRecognizer {
     for(var i = 0; i<embeddings.length; i++){
       waitForGroup.add(i);
     }
-    for (var i = 0; i < embeddings.length; i++) {
-      waitForGroup.remove(i);
-      m.add([i]);
-      if(waitForGroup.isEmpty){
+    while(waitForGroup.isNotEmpty){
+      int idx = waitForGroup.first;
+      waitForGroup.removeWhere((v) => v == idx);
+      m.add([idx]);
+      if (waitForGroup.isEmpty){
         break;
       }
+      List<int> waitForDeleted = [];
       for (var j in waitForGroup){
-        double sim = await calCosineSimilarity(embeddings[i], embeddings[j]);
-        if(sim > 0.8){
+        double sim = cosineSimilarity(embeddings[idx], embeddings[j]);
+        print(sim);
+        if(sim > 0.75){
           m.last.add(j);
-          waitForGroup.remove(j);
+          waitForDeleted.add(j);
         }
+      }
+      for(var j in waitForDeleted){
+        waitForGroup.remove(j);
       }
     }
     return m;
   }
-  
-  Future<double> calCosineSimilarity(List<double> e1, List<double> e2) async{
-    return compute(cosineSimilarity, [e1, e2]);
-  }
-  
 
-  double cosineSimilarity(List<List<double>> e)  {
+
+  double cosineSimilarity(List<double> e1, List<double> e2)  {
     double c = 0;
-    for (var i = 0; i < e[0].length; i++) {
-      c += e[0][i] * e[1][i];
+    for (var i = 0; i < e1.length; i++) {
+      c += e1[i] * e2[i];
     }
-    return c / (norm(e[0]) * norm(e[1]) + 1e-5);
+    return c / (norm(e1) * norm(e2) + 1e-5);
   }
 
   norm(List<double> e) {
-    double s = e.reduce((a, b) => a + b);
+    double s = e.map((a) => a * a).reduce((a, b) => a  + b);
     return sqrt(s);
   }
 

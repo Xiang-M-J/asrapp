@@ -24,7 +24,6 @@ class WavLoader {
     return [i + 8, dataSize];
   }
 
-
   Future<ByteData> load(String path) async {
     File file = File(path);
     Uint8List fileBytes = await file.readAsBytes();
