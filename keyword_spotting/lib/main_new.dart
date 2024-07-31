@@ -89,6 +89,8 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   List<String> cachedKeywords = [];
   List<int> cachedEmotion = [];
 
+  int nowViewNum = 1;
+
   static const sampleRate = 16000;
 
   final step = 16000;
@@ -103,10 +105,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   bool withTone = false; // 是否保留音调
 
   List<String> emotionModels = ["e2v", "self"];
-  bool e2v = false; // 是否使用 emotion2vec 模型，e2v 为false时使用mtcn模型
-
-  Timer? vadTimer;
-  Timer? srTimer;
+  bool e2v = true; // 是否使用 emotion2vec 模型，e2v 为false时使用mtcn模型
 
   String keyword = "开始识别"; // 关键词识别
   String cacheText = ""; // 用于储存 keyword 之前的识别结果
@@ -136,7 +135,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
     speechEmotionRecognizers[e2v] = SpeechEmotionRecognizer();
 
     speakerRecognizer = SpeakerRecognizer();
-    // erniePunctuation = ErniePunctuation();
     initModel();
     ahoCorasickSearcher = AhoCorasickSearcher(getKeywordsPinyin(withTone: withTone), withTone: withTone);
     initMap(withTone: withTone);
@@ -185,9 +183,8 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   void dispose() {
     resultController.dispose();
     statusController.dispose();
+    scrollController.dispose();
     _timer?.cancel();
-    vadTimer?.cancel();
-    srTimer?.cancel();
     mRecorder!.closeRecorder();
     mRecorder = null;
     mPlayer!.closePlayer();
@@ -329,8 +326,8 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       // 如果当前步无语音，且存在之前的语音段，则证明已经暂停了说话
       cacheVoice = concatVoice(voice);
       List<int> voiceEnd = voice.map((m) => m.length).toList();
-      for(var i = 1; i<voiceEnd.length;i++){
-        voiceEnd[i] += voiceEnd[i-1];
+      for (var i = 1; i < voiceEnd.length; i++) {
+        voiceEnd[i] += voiceEnd[i - 1];
       }
       voice.clear();
       if (cacheVoice == null) {
@@ -342,8 +339,6 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       String pinyin = getPinyin(simpleSentenceProcess(result?["char"]), withTone: withTone);
       Map<int, String>? results = ahoCorasickSearcher?.search(pinyin);
       List<List<int>> timestamps = result?["timestamp"];
-      List<List<int>> keywordsVoice = [];
-      int sIdx = detectedKeywords.length;
       if (results != null && results.isNotEmpty) {
         List<int> tmpVoice = List<int>.empty(growable: true);
         for (var k in results.keys) {
@@ -352,15 +347,11 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
           int idx = detectedEmotion.length;
           detectedEmotion.add(""); // ""  为暂时的情感
           detectedSpeaker.add(-1); // 暂时的分类
-          // detectedTimes.add(results[k].length);
           int tS = max(0, timestamps[k][0] * 16 - 1600);
           int tE = min(cacheVoice.length, timestamps[k + word.length - 1][1] * 16 + 1600);
           print("begin: $tS, end: $tE");
           tmpVoice = cacheVoice.sublist(tS, tE);
-          keywordsVoice.add(tmpVoice);
-          // play(tmpVoice);
           await speechEmotionRecognize(tmpVoice, idx);
-          speakerRecognizeWithCache(keywordsVoice, sIdx);
         }
       }
     } else {
@@ -401,36 +392,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       detectedEmotion[idx] = result;
     }
     setState(() {});
-
-  }
-
-  speakerRecognizeWithCache(List<List<int>> keywordsVoice, int sIdx) async{
-    for(var i = 0; i<keywordsVoice.length; i++){
-      int? spk = await speakerRecognizer?.predictAsyncWithCache(keywordsVoice[i]);
-      print(spk);
-      if(spk == null){
-        detectedSpeaker[sIdx + i] = -1;
-      }else{
-        detectedSpeaker[sIdx+i] = spk;
-      }
-    }
-  }
-
-  speakerRecognize(List<List<int>> keywordsVoice, int sIdx) async {
-    List<List<int>>? group = await speakerRecognizer?.predictAsync(keywordsVoice);
-    print("group: $group");
-    if (group == null) {
-      for (var i = 0; i < keywordsVoice.length; i++) {
-        detectedSpeaker[sIdx + i] = 0;
-      }
-    } else {
-      for (var i = 0; i < group.length; i++) {
-        for (var g in group[i]) {
-          detectedSpeaker[sIdx + g] = i;
-        }
-      }
-    }
-    setState(() {});
+    Future.delayed(const Duration(milliseconds: 500), () {
+      scrollController.jumpTo(scrollController.position.maxScrollExtent);
+    });
   }
 
   int2time(int count) {
@@ -554,31 +518,19 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
                 ),
               ),
             ),
-            ElevatedButton(onPressed: () async {
-              // WavLoader wavloader = WavLoader();
-              // List<String> audioList = ["A2_1.wav", "A2_2.wav", "D7_859.wav"];
-              // List<List<int>>  kwAudios = [];
-              // for(var audio in audioList){
-              //   ByteData byte = await rootBundle.load("assets/audio/$audio");
-              //   List<int> info = await wavloader.loadByteData(byte);
-              //   List<int> wav = [];
-              //   for(var i = info[0]; i < info[0] + info[1]; i+=2){
-              //     wav.add(byte.getInt16(i, Endian.little).toInt());
-              //   }
-              //   kwAudios.add(wav);
-              // }
-              // List<List<int>>? m = await speakerRecognizer?.predictAsync(kwAudios);
-              // print(m);
-              detectedSpeaker.add(1);
-              detectedKeywords.add("hello");
-              detectedEmotion.add("angry");
-              setState(() {
-
-              });
-              Future.delayed(const Duration(milliseconds: 200), () {
-                scrollController.jumpTo(scrollController.position.maxScrollExtent);
-              });
-            }, child: const Text("click")),
+            ElevatedButton(
+                onPressed: () async {
+                  WavLoader wavloader = WavLoader();
+                  ByteData byte = await rootBundle.load("assets/audio/sad_1_015.wav");
+                  List<int> info = await wavloader.loadByteData(byte);
+                  List<int> wav = [];
+                  for (var i = info[0]; i < info[0] + info[1]; i += 2) {
+                    wav.add(byte.getInt16(i, Endian.little).toInt());
+                  }
+                  String? m = await speechEmotionRecognizers[e2v]?.predictAsync(wav);
+                  print(m);
+                },
+                child: const Text("click")),
             const SizedBox(
               height: 20,
             ),
@@ -619,7 +571,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
                           statusController.text = "正在加载模型";
                           isModelInitialed = false;
                         });
-                        if(speechEmotionRecognizers[e2v] == null){
+                        if (speechEmotionRecognizers[e2v] == null) {
                           speechEmotionRecognizers[e2v] = SpeechEmotionRecognizer();
                           await speechEmotionRecognizers[e2v]?.initModel(e2v: e2v);
                         }
@@ -634,7 +586,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
                           statusController.text = "正在加载模型";
                           isModelInitialed = false;
                         });
-                        if(speechEmotionRecognizers[e2v] == null){
+                        if (speechEmotionRecognizers[e2v] == null) {
                           speechEmotionRecognizers[e2v] = SpeechEmotionRecognizer();
                           await speechEmotionRecognizers[e2v]?.initModel(e2v: e2v);
                         }

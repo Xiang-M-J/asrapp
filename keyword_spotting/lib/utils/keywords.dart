@@ -1,6 +1,6 @@
 import 'package:keyword_spotting/utils/pinyin_utils.dart';
 
-List<String> keywords = ["求求你", "求你了", "别打了", "别打我", "救命啊", "不敢了", "我要打你"];
+List<String> keywords = ["求求你", "求你了", "别打了", "别打我", "救命啊", "不敢了", "我要打你", "不要打了"];
 
 // Map<String, String> kwmWithTone = {
 //   "求求你": "qiu2qiu2ni3",

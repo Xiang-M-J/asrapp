@@ -5,7 +5,8 @@ class KeywordsBoard extends StatefulWidget {
   final List<String> keywords;
   final List<String> emotion;
   final List<int> speaker;
-  const KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.speaker});
+  final ScrollController controller;
+  const KeywordsBoard({super.key, required this.keywords, required this.emotion, required this.speaker, required this.controller});
 
   @override
   KeywordsBoardState createState() => KeywordsBoardState();
@@ -19,41 +20,37 @@ class KeywordsBoardState extends State<KeywordsBoard> {
 
   getEmotion(String id){
     if (id == "neutral"){    // 中性
-      return "😐";
-      return const Icon(Icons.add);
+      return "😐中性";
     }else if(id == "happy"){   // 喜悦
-      return "😊";
-      return const Icon(Icons.abc);
+      return "😊喜悦";
     }else if(id == "sad"){   // 伤心
-      return "😢";
+      return "😢悲伤";
     }
     else if(id == "fear"){   // 恐惧
-      return "😣";
+      return "😣恐惧";
     }
     else if(id == "angry"){
-      return "😡";
+      return "😡生气";
     }
     else{
-      return "😶";
-      return const Icon(Icons.update);
+      return "😶未知";
     }
   }
 
   List<Widget> getData(){
-    final size = 16;
     List<Widget> list = List<Widget>.empty(growable: true);
     list.add(const ListTile(
       dense: true,
-      leading: Text("情绪", style: TextStyle(fontSize: 16),),
-      title: Text("关键词", style: TextStyle(fontSize: 16),),
-      trailing: Text("说话人", style: TextStyle(fontSize: 16),),
+      leading: Text("   情绪   ", style: TextStyle(fontSize: 16),),
+      title: Text("  关键词", style: TextStyle(fontSize: 16),),
+      // trailing: Text("说话人", style: TextStyle(fontSize: 16),),
     ));
     for(var i = 0; i<widget.keywords.length; i++){
       list.add(ListTile(
         dense: true,
-        leading: Text(getEmotion(widget.emotion[i]), style: const TextStyle(fontSize: 16)),
-        title: Text(widget.keywords[i], style: const TextStyle(fontSize: 12)),
-        trailing: Text(widget.speaker[i].toString(), style: const TextStyle(fontSize: 16)),
+        leading: Text("  ${getEmotion(widget.emotion[i])}  ", style: const TextStyle(fontSize: 14)),
+        title: Text("  ${widget.keywords[i]}", style: const TextStyle(fontSize: 14)),
+        // trailing: Text(widget.speaker[i].toString(), style: const TextStyle(fontSize: 16)),
       ));
     }
     return list;
@@ -71,6 +68,7 @@ class KeywordsBoardState extends State<KeywordsBoard> {
       height: 0.3 * height,
       child:ListView(
         // shrinkWrap: true,
+        controller: widget.controller,
         children: getData(),
       ) ,
     )
