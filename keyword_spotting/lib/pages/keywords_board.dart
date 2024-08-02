@@ -50,7 +50,7 @@ class KeywordsBoardState extends State<KeywordsBoard> {
         dense: true,
         leading: Text("  ${getEmotion(widget.emotion[i])}  ", style: const TextStyle(fontSize: 14)),
         title: Text("  ${widget.keywords[i]}", style: const TextStyle(fontSize: 14)),
-        // trailing: Text(widget.speaker[i].toString(), style: const TextStyle(fontSize: 16)),
+        trailing: Text(widget.speaker[i].toString(), style: const TextStyle(fontSize: 14)),
       ));
     }
     return list;

@@ -33,3 +33,6 @@ train_kws/__pycache__
 train_kws/exp
 train_kws/ST-CMDS-20170001_1-OS
 train_kws/campplus_cn_common.bin
+train_spk_byol/.idea
+train_spk_byol/__pycache__
+train_spk_byol/checkpoints

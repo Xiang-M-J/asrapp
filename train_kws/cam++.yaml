@@ -6,7 +6,7 @@ noise:
 reverb:
 
 # outputs
-exp_dir: exp/cam++
+exp_dir: exp/camp1
 
 # basic
 num_epoch: 10
@@ -21,7 +21,7 @@ lr: 0.01
 min_lr: !!float 1e-4
 
 # dataloader
-batch_size: 100
+batch_size: 128
 num_workers: 16
 
 # model

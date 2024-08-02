@@ -30,7 +30,7 @@ class SpeakerRecognizer {
       ..setInterOpNumThreads(1)
       ..setIntraOpNumThreads(1)
       ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
-    String assetFileName = 'assets/models/campplus.quant.onnx';
+    String assetFileName = 'assets/models/campplus.quant.origin.onnx';
     final rawAssetFile = await rootBundle.load(assetFileName);
     final bytes = rawAssetFile.buffer.asUint8List();
     _session = OrtSession.fromBuffer(bytes, _sessionOptions!);
@@ -47,7 +47,7 @@ class SpeakerRecognizer {
     for(var i = 0; i<cacheEmbeddings.length; i++){
       double sim = cosineSimilarity(e, cacheEmbeddings[i]);
       print(sim);
-      if(sim > 0.5) {
+      if(sim > 0.6) {
         cacheEmbeddings[i] = e;
         return i;
       }

@@ -185,6 +185,7 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
   void dispose() {
     resultController.dispose();
     statusController.dispose();
+    scrollController.dispose();
     _timer?.cancel();
     vadTimer?.cancel();
     srTimer?.cancel();
@@ -401,7 +402,9 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
       detectedEmotion[idx] = result;
     }
     setState(() {});
-
+    Future.delayed(const Duration(milliseconds: 500), () {
+      scrollController.jumpTo(scrollController.position.maxScrollExtent);
+    });
   }
 
   speakerRecognizeWithCache(List<List<int>> keywordsVoice, int sIdx) async{
@@ -555,29 +558,29 @@ class AsrScreenState extends State<AsrScreen> with SingleTickerProviderStateMixi
               ),
             ),
             ElevatedButton(onPressed: () async {
-              // WavLoader wavloader = WavLoader();
-              // List<String> audioList = ["A2_1.wav", "A2_2.wav", "D7_859.wav"];
-              // List<List<int>>  kwAudios = [];
-              // for(var audio in audioList){
-              //   ByteData byte = await rootBundle.load("assets/audio/$audio");
-              //   List<int> info = await wavloader.loadByteData(byte);
-              //   List<int> wav = [];
-              //   for(var i = info[0]; i < info[0] + info[1]; i+=2){
-              //     wav.add(byte.getInt16(i, Endian.little).toInt());
-              //   }
-              //   kwAudios.add(wav);
-              // }
-              // List<List<int>>? m = await speakerRecognizer?.predictAsync(kwAudios);
-              // print(m);
-              detectedSpeaker.add(1);
-              detectedKeywords.add("hello");
-              detectedEmotion.add("angry");
-              setState(() {
-
-              });
-              Future.delayed(const Duration(milliseconds: 200), () {
-                scrollController.jumpTo(scrollController.position.maxScrollExtent);
-              });
+              WavLoader wavloader = WavLoader();
+              List<String> audioList = ["A2_1.wav", "A2_2.wav", "D7_859.wav"];
+              List<List<int>>  kwAudios = [];
+              for(var audio in audioList){
+                ByteData byte = await rootBundle.load("assets/audio/$audio");
+                List<int> info = await wavloader.loadByteData(byte);
+                List<int> wav = [];
+                for(var i = info[0]; i < info[0] + info[1]; i+=2){
+                  wav.add(byte.getInt16(i, Endian.little).toInt());
+                }
+                kwAudios.add(wav);
+              }
+              List<List<int>>? m = await speakerRecognizer?.predictAsync(kwAudios);
+              print(m);
+              // detectedSpeaker.add(1);
+              // detectedKeywords.add("hello");
+              // detectedEmotion.add("angry");
+              // setState(() {
+              //
+              // });
+              // Future.delayed(const Duration(milliseconds: 200), () {
+              //   scrollController.jumpTo(scrollController.position.maxScrollExtent);
+              // });
             }, child: const Text("click")),
             const SizedBox(
               height: 20,

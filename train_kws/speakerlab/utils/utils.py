@@ -84,6 +84,13 @@ def accuracy(x, target):
     return acc * 100
 
 
+def accuracyNum(x, target):
+    _, pred = x.topk(1)
+    pred = pred.squeeze(-1)
+    acc = pred.eq(target).sum()
+    return acc
+
+
 def average_precision(scores, labels):
     # scores: [N, ], labels: [N, ]
     if torch.is_tensor(scores):
